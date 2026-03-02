@@ -2,10 +2,9 @@ import numpy as np
 
 def viterbi_decoder(X, W, T):
     """
-    Implements the max-sum algorithm for MAP inference[cite: 93, 319].
-    X: Word image features, shape (m, 128)[cite: 59].
-    W: Node weights (letter-wise), shape (26, 128)[cite: 69].
-    T: Transition weights, shape (26, 26)[cite: 70].
+    X: Word image features, shape (m, 128)
+    W: Node weights (letter-wise), shape (26, 128)
+    T: Transition weights, shape (26, 26)
     """
     m = X.shape[0]  # Number of letters
     num_labels = 26

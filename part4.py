@@ -1,5 +1,5 @@
 from numpy.random import rand
-from part2a import getlogYgivenX, computegradient, save_solution
+from part2 import getlogYgivenX, computegradient, save_solution
 import numpy as np
 from read_data import read_data
 
