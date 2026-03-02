@@ -1,0 +1,804 @@
+\documentclass[11pt]{report}
+\usepackage{./assignment_programming}
+% \usepackage{slashbox}
+\usepackage{enumerate}
+\usepackage[shortlabels]{enumitem}
+\usepackage{stmaryrd}
+\usepackage{graphicx}
+\usepackage[final]{pdfpages}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{subfigure}
+%\PassOptionsToPackage{normalem}{ulem}
+%\usepackage{ulem}
+
+\input{./Definitions}
+
+%\providecommand{\tabularnewline}{\\}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% User specified LaTeX commands.
+%\usepackage{tikz}
+%\usepackage{tkz-graph}
+%\usetikzlibrary{shapes.arrows,chains}
+%\usetikzlibrary{calc}
+%\usetikzlibrary{arrows}
+
+
+%\graphicspath{{./figures/}}
+
+\lecturenumber{1}       % assignment number
+
+
+% Fill in your name and email address
+\stuinfo{Your Name}{netid@uic.edu}
+\graphicspath{{./}{./Figures/}}
+
+\begin{document}
+
+\maketitle
+
+{\bf Deadline: 23:59, Mar 6}
+
+
+{\bf This lab is for group work.
+Unless otherwise specified you cannot use any library beyond the standard ones provided with Python, Numpy, and Scipy}.
+That is, the use of machine learning libraries such as sklearn is prohibited.
+We provided some utility code.
+
+
+
+\paragraph{How to submit.}
+
+Only one member of each team needs to submit a zip file on Blackboard under Assessment/Lab 1.
+The filename should be \verb#Firstname_Lastname.zip#,
+where both names correspond to the member who submits it.
+
+
+Inside the zip file, the following contents should be included:
+%\vspace{-1em}
+\begin{enumerate}
+	\item  A PDF report named \verb#Report_Firstname_Lastname.pdf# with answers to the questions detailed below.
+	{\bf Your report should include the name and NetID of \emph{all} team members.}
+	%
+	The \LaTeX\ source code of this document is provided with the package, and you may write up your report based on it.
+	%
+	\item A folder named \verb#result# containing {\bf \underline{four} output result files} (underlined below in this document).
+	%
+	\item A folder named \verb#code# that contains your source code, along with a short \verb#readme.txt# file (placed inside \verb#code/#) that explains how to run it.
+		Your code should be well commented.
+\end{enumerate}
+%\vspace{-1em}
+
+
+
+You are allowed to resubmit as often as you like and your grade will be based on the last version submitted.
+Late submissions will not be accepted in any case, 
+unless there is a documented personal emergency.  
+Arrangements must be made with the instructor as soon as possible after the emergency arises,
+preferably well before the deadline.
+% Lab 1 contributes {\bf 11\%} to your final grade.
+
+
+Start working on the assignment early
+because a considerable amount of work will be needed,
+especially for making the implementation \emph{efficient}.
+%
+%The workload of the programming part is designed for 4 people, and a smaller group size  does not warrant any extra credit or reduction in workload.
+
+You will need to use numpy a lot in this lab.
+Here is a numpy primer: \href{https://jakevdp.github.io/PythonDataScienceHandbook/}{Python Data Science Handbook}, covering numpy, Pandas, Matplotlib.
+You should at least know that \texttt{y = xMatrix[0]} is a shallow copy,
+where \texttt{xMatrix} is a 2-D numpy array. 
+Understand how to make a deep copy.
+The book provides many \href{https://github.com/jakevdp/PythonDataScienceHandbook}{notebooks} for learning. 
+You can create your Jupyter notebook to run on Google Cloud,
+or locally on your own machine via \href{https://code.visualstudio.com/docs/python/python-tutorial}{VS Code} and \href{https://www.anaconda.com/products/individual}{Anaconda} (as opposed to directly downloading Python from the \href{https://www.python.org/downloads/}{official site}).
+Anaconda is the choice for data science.
+Data used in this lab has been processed for your convenience.
+
+%Latex primer: http://ctan.mackichan.com/info/lshort/english/lshort.pdf (Chapter 3)
+
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+{\bf \large Overview}	
+In this part, you will implement a conditional random field for optical character recognition (OCR),
+with emphasis on inference and performance test.
+
+
+
+
+
+
+In particular, we will build a classifier which recognizes ``words" from images.
+This is a great opportunity to pick up \emph{practical experiences} that are crucial for successfully applying machine learning to real world problems,
+and evaluating their performance with comparison to other methods.
+To focus on learning, all images of words have been segmented into letters,
+with each letter represented by a 16*8 small image.
+Figure \ref{fig:brace} shows an example word image with five letters.
+Although recognition could be performed letter by letter,
+we will see that higher accuracy can be achieved by recognizing the word as a whole.
+
+
+\begin{figure}[t!]
+	\begin{minipage}[b]{0.62\textwidth}
+		\centering
+		\vspace{-0.6em}
+		\includegraphics[width=9cm]{brace.jpg}
+		\vspace{0.6em}
+		\caption{Example word image}\label{fig:brace}
+	\end{minipage}
+	~~~
+	\begin{minipage}[b]{0.33\textwidth}
+		\centering
+		\includegraphics[width=5cm]{crf}
+		\caption{CRF for word-letter}\label{fig:CRF_model}
+	\end{minipage}
+\end{figure}
+
+
+
+\paragraph{Dataset}
+The original dataset was maintained by \href{https://en.wikipedia.org/wiki/Ben_Taskar}{Ben Taskar}.
+It contains the image and label of 6,877 words collected from 150 human subjects,
+with 52,152 letters in total.
+To simplify feature engineering, each letter image is encoded by a 128 (=16*8) dimensional vector,
+whose entries are either 0 (black) or 1 (white).
+%The code that loads the data always appends a constant 1 to the feature vectors,
+%leading to 129 features in total.
+The 6,877 words are divided evenly into training and test sets,
+provided in \verb#data/train.txt# and \verb#data/test.txt# respectively.
+The meaning of the fields in each line is described in \verb#data/fields_crf.txt#.
+
+
+Note in this dataset, only lowercase letters are involved, \ie\ 26 possible labels.
+Since the first letter of each word was capitalized and the rest were in lowercase,
+the dataset has removed all first letters.
+
+
+\paragraph{Performance measures}
+%
+We will compute two error rates: \emph{letter-wise} and \emph{word-wise}.
+Prediction/labeling is made on at letter level,
+and the percentage of incorrectly labeled letters is called letter-wise error.
+A word is correctly labeled if and only if \emph{all} letters in it are correctly labeled,
+and the word-wise error is the percentage of words in which at least one letter is mislabeled.
+
+
+\section{Conditional Random Fields}
+
+Suppose the training set consists of $n$ words.
+The image of the $t$-th word can be represented as
+$X^t = (\xvec^t_1, \ldots, \xvec^t_m)'$,
+where $'$ means transpose,
+$t$ is a superscript (not exponent),
+and each \emph{row} of $X^t$ (\eg\ $\xvec^t_m$) represents a letter.
+Here $m$ is the number of letters in the word,
+and $\xvec^t_j$ is a 128 dimensional vector that represents its $j$-th letter image.
+To ease notation, we simply assume all words have $m$ letters,
+and the model extends naturally to the general case where the length of word varies.
+The sequence label of a word is encoded as
+$\yvec^t = (y^t_1, \ldots, y^t_m)$,
+where $y^t_k \in \Ycal := \{1, 2, \ldots, 26\}$ represents the label of the $k$-th letter.
+So in Figure \ref{fig:brace}, $y^t_1 = 2$, $y^t_2 = 18$, \ldots, $y^t_5 = 5$.
+
+Using this notation, the Conditional Random Field (CRF) model for this task is a sequence shown in Figure \ref{fig:CRF_model},
+and the probabilistic model for a word/label pair $(X, \yvec)$ can be written as%
+\footnote{In statistics, random variables are generally written as capital letters.
+However using capital letters in the subscript really looks awkward, \eg, $\wvec_{Y_s}$,
+therefore we stick with lower case letter $\yvec$.}
+\begin{align}
+	\label{eq:crf}
+	p(\yvec | X ) &= \frac{1}{Z_X} \exp \rbr{\sum_{s=1}^m \inner{\wvec_{y_s}}{\xvec_s} + \sum_{s=1}^{m-1} T_{y_s, y_{s+1}}} \\
+	\where Z_X &= \sum_{\hat{\yvec} \in \Ycal^m} \exp \rbr{\sum_{s=1}^m \inner{\wvec_{\yhat_s}}{\xvec_s} + \sum_{s=1}^{m-1} T_{\yhat_s, \yhat_{s+1}}}.
+\end{align}
+%
+%$Z(X)$ is a normalization constant depending on $X$.
+$\inner{\cdot}{\cdot}$ denotes inner product between vectors.
+Two groups of parameters are used here:
+
+\vspace{-1em}
+\begin{itemize}
+	\item {\bf Node weight:} Letter-wise discriminant weight vector $\wvec_c \in \RR^{128}$ for each possible letter label $c \in \Ycal$.
+	Note $c$ is different from $\yvec$,
+	with the former being a letter label in $\Ycal$,
+	while the latter being a \textit{sequence} of letter labels.
+	%
+	\item {\bf Edge weight:} Transition weight matrix $T$ which is sized $26$-by-$26$.
+	$T_{ij}$ is the weight associated with the letter pair of the $i$-th and $j$-th letter in the alphabet.  For example $T_{1,9}$ is the weight for pair (`a', `i'), and $T_{24,2}$ is for the pair (`x', `b'). In general $T$ is not symmetric, \ie\ $T_{ij} \neq T_{ji}$, or written as $T' \neq T$ where $T'$ is the transpose of $T$.
+\end{itemize}
+
+Given these parameters (\eg\ by learning from data), the model \eqref{eq:crf} can be used to predict the sequence label (\ie\ word) for a new word image $X^* := (\xvec^*_1, \ldots, \xvec^*_m)^\top$ via the maximum a-posteriori (MAP) inference:
+\begin{align}
+	\label{eq:crf_decode}
+	\yvec^* = \argmax_{\yvec \in \Ycal^m} p(\yvec | X^*)
+	= \argmax_{\yvec \in \Ycal^m} \cbr{ \sum_{s=1}^m \inner{\wvec_{y_s}}{\xvec^*_s} + \sum_{s=1}^{m-1} T_{y_s, y_{s+1}}}.
+\end{align}
+
+
+
+
+\begin{itemize}
+	\item[(1a)] {\bf [5 Marks]} Show that for any $c \in \Ycal$, 
+	$\grad_{\wvec_c} \log p(\yvec^t|X^t)$---the derivative of $\log p(\yvec^t|X^t)$ with respect to $\wvec_c$---can be written as:
+	\begin{align}
+		\grad_{\wvec_c} \log p(\yvec^t|X^t) & = \sum_{s=1}^m (\sembrack{y^t_s = c} - p(y_s = c | X^t)) \xvec^t_s,
+	\end{align}
+	where $\llbracket \cdot \rrbracket = 1$ if $\cdot$ is true, and 0 otherwise.
+	Here $p(y_s | X^t)$ is the marginal distribution of $y_s$ given $X^t$ (based on \eqref{eq:crf}).
+	Show your derivation step by step.
+	
+	Now derive the similar expression for $\grad_{T_{ij}} \log p(\yvec^t|X^t)$.
+	
+	\item[(1b)] {\bf [5 Marks]} A feature is a function that depends on $X$ and $\yvec$, but not $p(\yvec|X)$. Show that the gradient of $\log Z_X$ with respect to $\wvec_c$ and $T$ is exactly the expectation of some features with respect to $p(\yvec | X)$, and what are the features? Include your derivation.
+	
+	Hint: $T_{y_s, y_{s+1}} = \sum_{p \in \Ycal, q \in \Ycal} T_{pq} \cdot \llbracket (y_s, y_{s+1}) = (p,q)  \rrbracket$.
+	
+	\item[(1c)] 
+	\label{qn:decoding}
+	{\bf [12 Marks]} Implement the decoder \eqref{eq:crf_decode} with computational cost $O(m|\Ycal|^2)$.
+	You may use the max-sum algorithm introduced in the course, or any simplified dynamic programming method that is customized to the simple sequence structure (see Appendix \ref{sec:MAP_formula}). 
+	To keep it simple, you do not need to implement a full-fledged message passing algorithm.
+	It is also fine to use the recursive functionality in the programming language.
+	
+	Also implement the brute-force solution by enumerating $\yvec \in \Ycal^m$, which costs $O(|\Ycal|^m)$ time.  Try small test cases to make sure your implementation of dynamic programming is correct.
+	You may find \verb#itertools.product# useful.
+	
+	The project package includes a test case stored in \verb#data/decode_input.txt#.
+	It has a single word with 100 letters ($\xvec_1, \ldots, \xvec_{100}$), $\wvec_c$, and $T$, stored as a column vector in the form of
+	\begin{align}
+		[\xvec'_1, \ldots, \xvec'_{100}, \wvec'_1, \ldots, \wvec'_{26}, T_{1,1}, T_{1,2}, \ldots, T_{1, 26}, T_{2,1}, \ldots, T_{2, 26}, \ldots, T_{26,1}, \ldots, T_{26, 26}]'.
+	\end{align}
+	All $\xvec_s \in \RR^{128}$ and $\wvec_c \in \RR^{128}$.
+	
+	\begin{center}
+		\fbox{\begin{minipage}{38em}
+				Be careful when loading $T$.  It is NOT a symmetric matrix.  
+				Some languages store matrices in a \href{https://en.wikipedia.org/wiki/Row-_and_column-major_order}{row-major}
+				order while some use column-major.
+				So you need to decide whether the loaded $T$ needs to be transposed (I'm not hinting either way).
+		\end{minipage}}
+	\end{center}
+	
+	In your submission, create a folder \verb#result# and store the result of decoding (the optimal $\yvec^* \in \Ycal^{100}$ of \eqref{eq:crf_decode}) in \underline{\texttt{result/decode\_output.txt}}.
+	It should have 100 lines,
+	where the $i$-th line contains one integer in $\{1,\ldots,26\}$ representing $y^*_i$.
+	In your report, provide the maximum objective value $\sum_{s=1}^m \inner{\wvec_{y_s}}{\xvec_s} + \sum_{s=1}^{m-1} T_{y_s, y_{s+1}}$ for this test case.
+	If you are using your own dynamic programming algorithm (\ie\ not max-sum),
+	give a brief description especially the formula of recursion.
+\end{itemize}
+
+%\newpage
+%Denote $m_{y_0 \to y_1}(y_1) = 1$ for all $y_1 \in \Ycal$.
+%
+%Forward: for $i = 2, 3, ... m-1$: $m_{y_i \to y_{i+1}}(y_{i+1}) = \sum_{y_i} m_{y_{i-1} \to y_{i}} (y_i)\exp (\inner{\wvec_{y_{i}}}{\xvec_i}) \exp(T_{y_i,y_{i+1}})$.
+%
+%Compute $Z = \sum_{y_m} m_{y_{m-1} \to y_m}(y_m) \exp (\inner{\wvec_{y_{m}}}{\xvec_m})$.
+%
+%Denote $m_{y_{m+1} \to y_m}(y_m) = 1$ for all $y_m \in \Ycal$.
+%
+%Backward: for $i = m, m-1,... 2$: $m_{y_i \to y_{i-1}}(y_{i-1}) = \sum_{y_i} m_{y_{i+1} \to y_{i}} (y_i)\exp (\inner{\wvec_{y_{i}}}{\xvec_i}) \exp(T_{y_{i-1},y_{i}})$.
+%
+%Compute marginals on $y_i$ for $i=1,\ldots,m$:
+%$p(y_i) \propto m_{y_{i-1} \to y_i}(y_i) m_{y_{i+1} \to y_i} (y_i) \exp (\inner{\wvec_{y_{i}}}{\xvec_i})$, followed by local normalization.
+%
+%Compute marginals on edges for $i=1,\ldots, m-1$:
+%$$p(y_i, y_{i+1}) \propto
+%m_{y_{i-1} \to y_i}(y_i) m_{y_{i+2} \to y_{i+1}} (y_{i+1})
+%\exp (\inner{\wvec_{y_{i}}}{\xvec_i})
+%\exp (\inner{\wvec_{y_{i+1}}}{\xvec_{i+1}})
+%\exp (T_{y_i, y_{i+1}}).$$
+%
+%Gradient in $\log Z$ are feature expectations computed from $p(y_i)$ and $p(y_i, y_{i+1})$.
+%\newpage
+
+\section{Training Conditional Random Fields}
+
+Finally, given a training set $\{X^t, \yvec^t\}_{t=1}^n$ ($n$ words),
+we can estimate the parameters $\{\wvec_c : c \in \Ycal\}$ and $T$ by maximizing the likelihood of the conditional distribution in \eqref{eq:crf}, or equivalently
+\begin{align}
+	\label{eq:obj_MLE}
+	\min_{\{\wvec_c\}, T} \ -\frac{C}{n}\sum_{t=1}^n \log p(\yvec^t | X^t) 
+	+ \frac{1}{2} \sum_{c \in \Ycal} \nbr{\wvec_c}^2 
+	+ \frac{1}{2} \sum_{ij} T^2_{ij}.
+\end{align}
+Here $C > 0$ is a trade-off weight that balances log-likelihood and regularization.
+
+
+\begin{itemize}
+	\item[(2a)] {\bf [12 Marks]} Implement a dynamic programming algorithm to compute $\log p(\yvec^t | X^t)$ and its gradient.  Recall that the gradient is nothing but the expectation of features, and therefore it suffices to compute the marginal distribution of $y_j$ and $(y_s, y_{s+1})$. See Appendix \ref{sec:marginal}.
+	The underlying dynamic programming principle is common to the computation of $\log p(\yvec^t | X^t)$, its gradient, and the decoder of \eqref{eq:crf_decode}.
+	See Appendix \ref{sec:partition}.
+	
+	For numerical robustness (overflow or underflow), the following trick\footnote{\href{https://en.wikipedia.org/wiki/LogSumExp}{\url{https://en.wikipedia.org/wiki/LogSumExp}}} is widely used when computing $\log \sum_i \exp(x_i)$ for a given array $\{x_i\}$.  If we naively compute and store $\exp(x_i)$ as intermediate results, underflow and overflow could often occur.  So we resort to computing an equivalent form $M + \log \sum_i \exp(x_i - M)$, where $M := \max_i x_i$.  This way, the numbers to be exponentiated are always non-positive (eliminating overflow), and one of them is 0 (hence underflow is not an issue).  Similar tricks can be used for computing $\exp(x_1) / \sum_i \exp(x_i)$, or its logarithm.
+	Do not use \verb#scipy.special.logsumexp#.
+	
+	For computational efficiency, pre-compute $\{\inner{\wvec_y}{\xvec_s}\}$ for all $y \in \Ycal$, $s \in \{1, \ldots, m\}$ before running the dynamic programming,
+	so that they do not need to be recomputed in every step of the dynamic programming.
+	
+	To ensure your implementation is correct, it is recommended that the computed gradient be compared against the result of auto-differentiation (which is based only on the objective value).
+	In Python, use \verb#scipy.optimize.check_grad#.	
+	In general, it is a very good practice to use these tools to test the implementation of function evaluator.
+	Since numerical differentiation is often computation intensive, you may want to design small test cases (\eg\ a single word with 4 letters, 4 randomly valued pixels, and 3 letters in the alphabet).
+	An error level of $10^{-4}$ will be good enough.
+	
+	The project package includes a (big) test case in \verb#data/model.txt#.
+	It specifies a value of $\wvec_c$ and $T$ as a column vector (again $T \neq T'$):
+	\begin{align}
+		\label{eq:model_vec}
+		[\wvec'_1, \ldots, \wvec'_{26}, T_{1,1}, T_{1,2}, \ldots, T_{1, 26}, T_{2,1}, \ldots, T_{2, 26}, \ldots, T_{26,1}, \ldots, T_{26, 26}]'.
+	\end{align}
+	Compute the gradient $\frac{1}{n} \sum_{t=1}^n \grad_{\wvec_c} \log p(\yvec^t | X^t)$ and
+	$\frac{1}{n} \sum_{t=1}^n \grad_{T} \log p(\yvec^t | X^t)$
+	(\ie\ averaged over the training set provided in \verb#data/train.txt#) evaluated at this $\wvec_c$ and $T$.
+	Store them in \underline{\texttt{result/gradient.txt}} as a column vector following the same order as in \eqref{eq:model_vec}.
+	Pay good attention to column-major / row-major of your programming language when writing $T$.
+	
+	{\bf Provide} the value of $\frac{1}{n} \sum_{t=1}^n \log p(\yvec^t | X^t)$ for this case in your report.
+	Hint: it is in $[-100,0]$.
+
+	
+	For your reference,
+	in your instructor's Python implementation,
+	it takes 5 seconds to compute the gradient on the whole training set.
+	Single core of Intel(R) i7-10510U CPU @ 1.80GHz.
+		
+	
+	\item[(2b)] {\bf [12 Marks]} We can now learn ($\{\wvec_c\}, T$) by solving the optimization problem in \eqref{eq:obj_MLE} based on the training examples in \verb#data/train.txt#.
+	Set $C = 1000$.
+	Typical off-the-shelf solvers rely on a routine which, given as input a feasible value of the optimization variables ($\wvec_c, T$), returns the objective value and gradient evaluated at that ($\wvec_c, T$). This routine is now ready from the above task,
+	although you still need to compute the gradient of $\frac{1}{2} \sum_{c \in \Ycal} \nbr{\wvec_c}^2 + \frac{1}{2} \sum_{ij} T^2_{ij}$ in \eqref{eq:obj_MLE}.
+	
+	In this lab, we will use \href{https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.fmin_tnc.html}{\texttt{fmin\_tnc}} (LBFGS) from \verb#scipy.optimize#, with the input argument \verb#bounds=none#.	
+	Set the initial values of $\{\wvec_c\}$ and $T$ to zero.
+	\href{https://www.programcreek.com/python/example/114546/scipy.optimize.fmin_tnc}{Here} are some examples of its use.
+		
+	Optimization solvers usually involve a large number of parameters.
+	Some default settings for Python solvers are provided in \verb#code/ref_optimize.py#,
+	where comments are included on the meaning of the parameters and other heuristics.
+	It also includes some pseudo-code of CRF objective/gradient,
+	to be used by various solvers.
+	Feel free to tune the parameters of the solvers if you understand them.
+	
+	In your submission, include
+	\begin{itemize}
+		\item The optimal solution $\{\wvec_c\}$ and $T$.  Store them as \underline{\tt{result/solution.txt}}, in the format of \eqref{eq:model_vec}.
+		%
+		\item The predicted label for each letter in the test data \verb#data/test.txt#, using the decoder implemented in (1c).
+		Store them in \underline{\tt{result/prediction.txt}},
+		with each line having one integer in $\{1,\ldots, 26\}$ that represents the predicted label of a letter, in the same order as it appears in \verb#data/test.txt#.
+	\end{itemize}
+	In your report, provide the optimal objective value of \eqref{eq:obj_MLE} found by your solver.
+\end{itemize}
+
+
+\section{Benchmarking with Other Learning Models}
+
+In Question 2, we have managed to train the CRF,
+and the result can be used to make predictions on test sequences of images by running the decoding algorithm from Question 1c. 
+Now we can perform some benchmarking by comparing CRF with two alternative approaches:
+multi-class linear SVM on individual letters (SVM-MC),
+and structured SVM (SVM-Struct).
+SVM-MC treats each pair of \emph{letter} image and label as a training/test example.
+We will use the LibLinear package%
+\footnote{\href{http://www.csie.ntu.edu.tw/~cjlin/liblinear/}{http://www.csie.ntu.edu.tw/$\sim$cjlin/liblinear/}},
+which provides a Python wrapper.
+In order to keep the comparison fair,
+we will use linear kernels only (there are kernelized versions of CRF),
+and for linear kernels LibLinear is much faster than the general-purpose package LibSVM%
+\footnote{\href{http://www.csie.ntu.edu.tw/~cjlin/libsvm/}{http://www.csie.ntu.edu.tw/$\sim$cjlin/libsvm/}},
+
+
+For SVM-Struct, we will use the off-the-shelf implementation from the $\text{SVM}^{\text{hmm}}$ package%
+\footnote{\href{http://www.cs.cornell.edu/People/tj/svm_light/svm_hmm.html}{http://www.cs.cornell.edu/People/tj/svm\_light/svm\_hmm.html}},
+where some parameters are inherited from the $\text{SVM}^{\text{Struct}}$ package%
+\footnote{\href{http://www.cs.cornell.edu/people/tj/svm_light/svm_struct.html}{http://www.cs.cornell.edu/people/tj/svm\_light/svm\_struct.html}}.
+Do NOT use the $\text{SVM}^{\text{Struct}}$ package directly; 
+use the $\text{SVM}^{\text{hmm}}$ package instead.
+No Matlab/Python wrapper for $\text{SVM}^{\text{hmm}}$ is available.
+So write up a script in your favorite language to call the \textbf{binary} executables and to parse the results.
+
+
+$\text{SVM}^{\text{hmm}}$ requires that the input data be stored in a different format.
+This conversion has been done for you, and the resulting data files are \verb#data/train_struct.txt# and \verb#data/test_struct.txt#.
+For SVM-MC, you need to write a script to create a data file that is readable by LibSVM,
+and you may find it convenient to do it based on \verb#train_struct.txt# and \verb#test_struct.txt#.
+The meaning of the fields in each line is described in \verb#data/fields_struct.txt#.
+%Letter-wise multi-class SVM can be considered as a special case of structured SVM,
+%where each word consists of only one letter.
+
+
+
+
+\begin{itemize}
+	\item[(3a)] {\bf [10 Marks]} $\text{SVM}^{\text{hmm}}$ has a number of parameters related to modeling, such as \verb#-c#, \verb#-p#, \verb#-o#, \verb#--t#, and \verb#--e#.
+	Use the default settings for all parameters except \verb#-c#,
+	which serves the same role as $C$ in \eqref{eq:obj_MLE} for CRF.
+	In the sequel, we will also refer to the $C$ in \eqref{eq:obj_MLE} as the \verb#-c# parameter.
+	LibLinear, which is used for SVM-MC, also has this parameter.
+	But note that different from $\text{SVM}^{\text{hmm}}$ and \eqref{eq:obj_MLE}, the objective function used by LibLinear does NOT divide $C$ by the number of training examples (\ie\ letters).
+	Keep the default value of other parameters in LibLinear.
+	%So when invoking LibLinear, the value following \verb#-c# should be manually divided by $n$.
+	
+	The performance measure can be a) accuracy on letter-wise prediction, \ie\ the percentage of correctly predicted letters on the whole test set%
+	\footnote{This is different from computing the percentage of correctly predicted letters in each word, and then averaging over all words, which is the last line of console output of \textsf{svm\_hmm\_classify}.  Both measures, of course, make sense.
+		You may use the letter-wise prediction that \textsf{svm\_hmm\_classify} writes to the file specified by the third input argument.},
+	or b) word-wise prediction, \ie\ the percentage of words whose constituent letters are all predicted correctly.
+	For multi-class problems, accuracy is more commonly used than error.
+	
+	For each of CRF, SVM-Struct, and SVM-MC,
+	plot a curve in a separate figure where the $y$-axis is the letter-wise prediction accuracy on test data,
+	and the $x$-axis is the value of \verb#-c# varied in a range that you find reasonable,
+	\eg\ $\{1, 10, 100, 1000\}$.
+	Theoretically, a small \verb#-c# value will ignore the training data and generalize poorly on test data.
+	On the other hand, overly large \verb#-c# may lead to overfitting, and make optimization challenging (taking a lot of time to converge).
+	
+	\textbf{Hint}: to roughly find a reasonable range of \verb#-c#, a commonly used heuristic is to try on a small sub-sample of the data, and then apply it to a larger data set (be wary of normalization by the number of training example for LibLinear as mentioned above).
+	
+	What observation can be made on the result?
+	
+	\item[(3b)] {\bf [5 Marks]} Produce another three plots for word-wise prediction accuracy on test data.  What observation can be made on the result?
+	%Note in SVM-MC, we used the trick of treating each letter as a word. Therefore some conversion is needed to compute the word-wise accuracy. So another file \verb#data/test_index.txt# is provided.  Each line of it corresponds to a letter in the test set, and it has the same number of lines as \verb#test_mc.txt#.  Each line has a single integer which is the word-id from the original data.  So two lines with the same integer means their corresponding letters belong to the same word.
+\end{itemize}
+
+
+\section{Stochastic Optimization}
+
+\begin{figure}[t]
+	\centering
+	\subfigure[Training objective v.s. effective pass]{
+		\includegraphics[width=6cm]{obj_compare}}
+	\hspace{4em}
+	\subfigure[Test word-wise error v.s. effective pass]{
+		\includegraphics[width=6cm]{error_compare}}
+	\caption{Comparison of SGD, momentum, and LBFGS}
+	\label{fig:compare_optimizer}
+\end{figure}
+
+
+So far, we have trained CRF (\ie, solving \eqref{eq:obj_MLE}) by batch optimization.
+We now test stochastic optimization in two senses:
+stochastic mini-batch and sampling based inference.
+For this section, you should fix the value of $C$ in the CRF to the best value found by the previous section.
+%
+\begin{itemize}
+	\item[(4a)] {\bf [8 Marks]}
+	 The idea of stochastic optimization is very simple. 
+	At each iteration, we randomly sample $B$ number of training examples (denoted as $\Bcal$), 
+	and approximate $\frac{1}{n}\sum_{t=1}^n \log p(\yvec^t | X^t)$
+	by $\frac{1}{B}\sum_{t\in \Bcal} \log p(\yvec^t | X^t)$.
+	Using the (stochastic) gradient computed from the latter, 
+	we can run multiple solvers such as stochastic gradient descent (SGD)
+	and SGD with momentum.
+	Read the following \href{https://machinelearningmastery.com/gradient-descent-with-momentum-from-scratch/}{blog} and import its implementation of the two algorithms to your project.
+	
+	
+	Our goal is to compare the efficiency of SGD, momentum, and LBFGS in driving down the training objective \eqref{eq:obj_MLE} and in reducing the test error.
+	To this end, we will plot two figures, each including three curves corresponding to the  three methods (see an example plot in Figure \ref{fig:compare_optimizer}).
+	The first figure illustrates the decline of training objective value (\ie, \eqref{eq:obj_MLE}) as a function of effective number of passes.
+	Suppose SGD is run for $k$ iterations/steps, with each iteration sampling $B$ examples/words.
+	Then the effective number of pass is $kB/n$,
+	facilitating the comparison with LBFGS,
+	where the effective number of pass is exactly the number of objective function evaluation.
+	It is crucial to note that each iteration of LBFGS may evaluate the function \textbf{more than once}.
+	\verb#fmin_tnc# takes a callback function, which will help us to track the progress.
+	However, the callback function only takes as input the current solution,
+	and does not provide the count of function evaluation so far.
+	As a hack, you can put a counter in the function evaluation subroutine written by yourself,
+	and make it a global variable which can be accessed inside the callback function.
+	
+	Within the callback function, evaluate and print two numbers: 
+	1) the word-wise test error given by the current value of $\{w_c\}$ and $T$;
+	2) the current training objective value of \eqref{eq:obj_MLE}.
+	For the latter, simply (re)compute the objective value instead of buffering the value from the last function evaluation; the mechanism of LBFGS may mess it up.
+	You can also save the values of 1) and 2) as global variables,
+	which can be used for plotting after the solver terminates.
+	 
+	All the three solvers have hyperparameters, including $B$ and learning rate for SGD and momentum.
+	Tune them well for all the methods respectively before plotting.
+	You can tune them based on how fast the training objective decays.
+	%
+	\item[(4b)] {\bf [8 Marks]} 
+	Since the dynamic programming based gradient computation can still be expensive,
+	an alternative is to evaluate the gradient by sampling,
+	noting that the gradient only requires the marginal distribution on edges and nodes.
+	Here, let us use a block Markov Chain Monte Carlo (MCMC) sampler,
+	which is the method of training restricted Boltzmann machines:	
+	
+	1. Ignore the edge potential (\ie, set $T=\zero$), which leaves all $y_s$ as independent given $X$.
+	
+	2. Sample the value of $y_s$ for all $s$ based on such independent distributions.
+	
+	3. For $k = 1, 2, \ldots, S$ ($S$ being a hyperparameter for tuning, akin to $B$)
+	
+	4. $\qquad$ Given/fixing $y_1, y_3, y_5, \ldots$, sample for $y_2, y_4, y_6, \ldots$ ($T$ is no longer set to $\zero$).
+	
+	5. $\qquad$ Given/fixing $y_2, y_4, y_6, \ldots$, sample for $y_1, y_3, y_5, \ldots$ ($T$ is no longer set to $\zero$).
+	
+	6. $\qquad$ Call the current $\{y_1, y_2, y_3, y_4, \ldots\}$ as a \textbf{sample}.
+	
+	7. Use the $S$ samples to compute the marginal distribution of nodes and edges.
+	
+	The key convenience is that given $y_1, y_3, y_5, \ldots$, 
+	the remaining variables $y_2, y_4, y_6, \ldots$ are independent, hence can be sampled independently and efficiently.
+	Overall we draw $S$ number of samples.
+	
+	
+	
+	
+	Answer the following questions in your report.
+	
+	\textbf{(i)} 
+	Write out the formula of $p(y_s|\ldots, y_{s-3}, y_{s-1}, y_{s+1}, y_{s+3}, \ldots, X)$.
+	There is no need to distinguish odd or even values of $s$. 
+	What is the overall computational complexity (in big $O$ notation) of drawing a sample, \ie, completing steps 4 and 5 for one iteration of $k$.
+	Compare it with the cost of dynamic programming.
+	Your complexity should be expressed in the number of letters in the word ($m$),
+	and the size of the alphabet (\ie, $\abr{\Ycal}=26$).
+	
+	Incidentally, you may have noticed that it is even more time consuming to draw a reasonable number of samples than to run the dynamic programming.
+	This is expected because we are working on a linear chain on which dynamic programming is feasible.
+	But sampling can be applied to a far broader range of graphs,
+	and our focus in this lab is to explore how many samples are needed to get a good gradient.
+	
+	\textbf{(ii)} 
+	Implement the sampling procedure and supply the resulting gradient to SGD, momentum, LBFGS.
+	In a sense, it is doubly stochastic for SGD and momentum, because both the mini-batch and MCMC introduce noise. 
+	In contrast, the gradient used by LBFGS is noisy only due to MCMC,
+	and it still uses the entire training set.
+	Now reproduce the two plots in the same way as in Question 4a.
+
+	
+	What observations can you make?  How does $S$ impact the performance of the three solvers?
+	You can directly reuse the best hyperparameters of the three solvers from Question 4a.
+		
+	\textbf{Hint}: You do not need to use a large number of samples.  $S=10$ or even 5 might work.
+	
+	\textbf{How to debug your sampler?} The easiest way is to take an arbitrary word, and compute the node and edge marginal distributions based on samples.  Then compare them with the result of dynamic programming.  The difference should decay to 0 as $S$ grows.
+	
+	\item[(4c)] {\bf [8 Marks]} 
+	Rao-Blackwellization. 
+	MCMC can require a lot of samples if we really want high-quality estimates of node and edge distributions.
+	It may also suffer from high variance.
+	To alleviate this problem, the Rao-Blackwell approach is handy.
+	Instead of counting hard samples (0/1), it accumulates fractional samples.
+	For example, previously, when a sample 'a' is drawn for $y_k$, 
+	we just increment the count of $y_k = $'a' by 1 for the purpose of estimating the marginal probability of $y_k$.
+	Now suppose $p=(p_a, \ldots, p_z)$ is the conditional probability of $y_k$ given $y_1, \ldots, y_{k-1}, y_{k+1}, \ldots$ (step 4 or 5 in the above algorithm), then we will increment the count of $y_k = $'a' by $p_a$,
+	the count of $y_k = $'b' by $p_b$, etc.
+	
+	Similar ideas can be extended to edge marginals.
+	Suppose, when we draw sample for $y_k$, 
+	the current sampled letter value of $y_{k-1}$ and $y_{k+1}$ is 'r' and 's', respectively.
+	Then we will increment the count for $P_{k-1,k}(r, a)$ by $p_a$, 
+	the count for $P_{k-1,k}(r, b)$ by $p_b$, 
+	the count for $P_{k,k+1}(a, s)$ by $p_a$, 
+	the count for $P_{k,k+1}(b, s)$ by $p_b$, 
+	etc.
+	Here $P_{k-1,k}$ is the marginal distribution of $(y_{k-1}, y_k)$,
+	and $P_{k,k+1}$ is the marginal distribution of $(y_k, y_{k+1})$.
+	
+	Now do the following in the report.
+	
+	\textbf{(i)}  Write out the pseudo-code for Rao-Blackwellized MCMC sampling.  
+	You may doubt when to update the count:
+	after sampling the entire sequence (as in the above algorithm),
+	or right after each $y_k$ is drawn.
+	You may also consider how to do the normalization.
+	Use your own intuition and resort to experiment to figure out a reasonable algorithm.
+	The `correct' algorithm is not unique, and it works when the divergence against the dynamic programming result decays to 0 as more and more samples are drawn.
+	See the next sub-question (ii).
+	
+	\textbf{(ii)} Take the model in \verb#data/model.txt# and the first word in \verb#data/train.txt#. Then plot in one figure the KL-divergence between MCMC estimate $\ptil$ and the dynamic programming result $p$, with or without Rao-Blackwellization.
+	The x-axis is the number of samples,
+	and the y-axis is 
+	$\sum_{s=1}^m \text{KL}(\ptil_s, p_s)$ (for node marginal) and 
+	$\sum_{s=1}^{m-1} \text{KL}(\ptil_{s,s+1}, p_{s,s+1})$ (for edge marginal).
+	Multiplied with using and not using Rao-Blackwellization,
+	there should be \textbf{four} curves in the plot.
+	If it helps, use logarithmic scale for some axis.
+	What observation can be made?
+\end{itemize}
+
+
+
+
+\section{Robustness to Distortion}
+
+An evil machine learner tampered with the training and test images by rotation and translation.
+However, the labels (letter/word annotation) are still clean, and so
+one could envisage that the structured models (CRF and SVM-Struct) will be less susceptible to such tempering.
+
+
+
+In Python, you can use functions from OpenCV such as
+\href{https://docs.opencv.org/3.4/da/d54/group__imgproc__transform.html#gafbbc470ce83812914a70abfb604f4326}{\texttt{getRotationMatrix2D}} and \href{https://docs.opencv.org/3.4/da/d54/group__imgproc__transform.html#ga0203d9ee5fcd28d40dbc4a1ea4451983}{\texttt{warpAffine}} to rotate and translate an image. 
+They take some parameters such as offset and degree of rotation.
+Make sure that the image size is not changed. 
+This means in \texttt{warpAffine}, set the argument \verb#dsize# appropriately.
+You can choose any interpolation method.
+%
+Both functions take images represented as a matrix.
+So if your image is represented as a 128 dimensional vector,
+first reshape it into a matrix sized $8 \times 16$,
+then apply these functions,
+followed by vectorizing it back.
+
+The images stored in the data files are in \href{https://en.wikipedia.org/wiki/Row-_and_column-major_order}{column-major order}.
+In contrast, Python uses row-major.
+As you need to translate and rotate images here, 
+you may want to ensure that the 2-D image is properly loaded before applying the transformations.  
+Just check by visualizing the images, e.g. by \verb#imshow#.	
+
+In this experiment
+we randomly select a subset of training examples to distort.
+All test examples remain unchanged.
+A randomly generated list of transformations are given in \verb#data/transform.txt#, where the lines are in the following format:
+%
+\begin{verbatim}
+r 317 15
+t 2149 3 3
+\end{verbatim}
+The first line means: on the 317-th word of the training data (in the order of \verb#train.txt#),
+apply counterclockwise rotation by 15 degrees \emph{to all its letters}.
+The second line means on the 2149-th word of the training data, apply translation with offset $(3,3)$.
+Note in each line the first number (\ie\ second column: 317, 2149, \ldots) is random and \emph{not} sorted.
+All line numbers appear exactly once.
+
+\begin{itemize}
+	\item[(5a)] {\bf [10 Marks]} In one figure, plot the following two curves where the $y$-axis is the letter-wise prediction accuracy on test data.  We will apply to the training data the first $x$ lines of transformations specified in \verb#data/transform.txt#.  $x$ is varied in $\{0, 500, 1000, 1500, 2000\}$ and serves as the value of $x$-axis.
+	
+	1) CRF where the \verb#-c# parameter is set to any of the best values found in (3a);
+	
+	2) SVM-MC where the \verb#-c# parameter is set to any of the best values found in (3a).
+	
+	What observation can be made on the result?
+	
+	\item[(5b)] {\bf [5 Marks]}  Generate another plot for word-wise prediction accuracy on test data.  The \verb#-c# parameter in SVM-MC may adopt any of the best values found in (3b).
+	What observation can be made on the result?
+	
+\end{itemize}
+
+\newpage
+\section{Appendix: Dynamic programming details}
+
+\subsection{Computing the partition function}
+\label{sec:partition}
+
+In order to compute $Z$, let us define $f_1(y_1) = 1$ for all $y_1 \in \Ycal$, and then for all $i = 2, \ldots, m$
+\begin{align}
+	f_i(y_i) = \sum_{y_1, \ldots, y_{i-1}} \exp \rbr{\sum_{j=1}^{i-1} \inner{\wvec_{y_j}}{\xvec_j} + \sum_{j=1}^{i-1} T_{y_j, y_{j+1}}}, \quad \forall y_i \in \Ycal.
+\end{align}
+%This is exactly the message $m_{(i-1) \to i}(y_{i})$ defined in our lecture of Mar 1.
+Then
+\begin{align}
+	Z = \sum_{y_m \in \Ycal} \exp \rbr{\inner{\wvec_{y_m}}{\xvec_m}} f_m(y_m) .
+\end{align}
+
+To compute $f_i(y_i)$, we use recursion by
+\begin{align}
+	\label{eq:rec_Z_forward_1}
+	f_1(y_1) &= 1, \quad \forall y_1 \in \Ycal \\
+	f_i(y_i) &= \sum_{y_{i-1}} \exp \rbr{\inner{\wvec_{y_{i-1}}}{\xvec_{i-1}} + T_{y_{i-1}, y_i}}
+	\sum_{y_1, \ldots, y_{i-2}} \exp \rbr{\sum_{j=1}^{i-2} \inner{\wvec_{y_j}}{\xvec_j} + \sum_{j=1}^{i-2} T_{y_j, y_{j+1}}} \\
+	\label{eq:rec_Z_forward_2}
+	&= \sum_{y_{i-1}} \exp \rbr{\inner{\wvec_{y_{i-1}}}{\xvec_{i-1}} + T_{y_{i-1}, y_i}}  \cdot f_{i-1}(y_{i-1})  \qquad (\forall\ y_i \in \Ycal, \ i = 2, 3, \ldots, m).	 
+\end{align}
+
+\paragraph{Comment 1:}
+We can also use the log-sum-exp trick if we stay in the logarithmic space. 
+Define $\alpha_i(y_i) = \log f_i(y_i)$.
+Then $\alpha_1(y_1) = 0$, and
+\begin{align}
+	\alpha_i(y_i) &= \log \sum_{y_{i-1}} \exp \rbr{\inner{\wvec_{y_{i-1}}}{\xvec_{i-1}} + T_{y_{i-1}, y_i} + \alpha_{i-1}(y_{i-1})} \qquad \forall i \ge 2, y_i \in \Ycal\\
+	\log Z &= \log \sum_{y_m} \exp (\inner{\wvec_{y_m}}{\xvec_m} + \alpha_m(y_m)).
+\end{align}
+
+\paragraph{Comment 2:}
+We might attempt to incorporate the node factor $\exp(\inner{\wvec_{y_i}}{\xvec_i})$ into the message, i.e.,
+\begin{align}
+	g_i(y_i) := \exp(\inner{\wvec_{y_i}}{\xvec_i}) \cdot f_i(y_i) = \sum_{y_1, \ldots, y_{i-1}} \exp \rbr{\sum_{j=1}^{i} \inner{\wvec_{y_j}}{\xvec_j} + \sum_{j=1}^{i-1} T_{y_j, y_{j+1}}}, \quad \forall y_i \in \Ycal.
+\end{align}
+Then the recursion can be written as
+\begin{align}
+	g_1(y_1) &= \exp(\inner{\wvec_{y_1}}{\xvec_1}), \quad \forall y_1 \in \Ycal \\
+	g_i(y_i) &= \exp(\inner{\wvec_{y_i}}{\xvec_i}) \cdot \sum_{y_{i-1}} \exp \rbr{T_{y_{i-1}, y_i}}
+	\sum_{y_1, \ldots, y_{i-2}} \exp \rbr{\sum_{j=1}^{i-1} \inner{\wvec_{y_j}}{\xvec_j} + \sum_{j=1}^{i-2} T_{y_j, y_{j+1}}} \\
+	&= \exp(\inner{\wvec_{y_i}}{\xvec_i}) \cdot \sum_{y_{i-1}} \exp \rbr{T_{y_{i-1}, y_i}}  g_{i-1}(y_{i-1})  \qquad (\forall\ i \ge 2, \ y_i \in \Ycal), \\
+	\text{and} \quad Z &= \sum_{y_m} f_m(y_m).
+\end{align}
+This works well for a linear chain.
+But it is not recommended because it does not extend well to general tree structure.
+Suppose we want to compute the message from $j$ to $i$, and $j$ has two other neighbors $k$ and $k'$.
+Then the messages $k \to j$ and $k' \to j$ have \textbf{both} contained the node potential of $j$ (i.e. $f_j(y_j) = \exp (\inner{\wvec_{y_j}}{\xvec_j})$).
+So when we multiply together the messages $k \to j$ and $k' \to j$ (as in the message formula),
+this node potential will be \emph{double counted}.
+
+\subsection{MAP inference}
+\label{sec:MAP_formula}
+Here we define
+\begin{align}
+	h_i(y_i) = \max_{y_1, \ldots, y_{i-1}} \exp \rbr{\sum_{j=1}^{i-1} \inner{\wvec_{y_j}}{\xvec_j} + \sum_{j=1}^{i-1} T_{y_j, y_{j+1}}}, \quad \forall y_i \in \Ycal.
+\end{align}
+
+Then all the recursion expressions in \eqref{eq:rec_Z_forward_1}	to \eqref{eq:rec_Z_forward_2} almost remain unchanged,
+except that all summations are replaced by max:
+\begin{align}
+	\label{eq:rec_MAP_forward_1}
+	h_1(y_1) &= 1, \quad \forall y_1 \in \Ycal \\
+	h_i(y_i) &= \max_{y_{i-1}} \exp \rbr{\inner{\wvec_{y_{i-1}}}{\xvec_{i-1}} + T_{y_{i-1}, y_i}}
+	\max_{y_1, \ldots, y_{i-2}} \exp \rbr{\sum_{j=1}^{i-2} \inner{\wvec_{y_j}}{\xvec_j} + \sum_{j=1}^{i-2} T_{y_j, y_{j+1}}} \\
+	\label{eq:rec_MAP_forward_2}	
+	&= \max_{y_{i-1}} \exp \rbr{\inner{\wvec_{y_{i-1}}}{\xvec_{i-1}} + T_{y_{i-1}, y_i}}  h_{i-1}(y_{i-1})  \qquad (\forall\ y_i \in \Ycal, \ i = 2, 3, \ldots, m).
+\end{align}
+
+After obtaining $h_m(y_m)$, we recover the MAP by backtracking
+\begin{align}
+	y^*_m &= \argmax_{y_m} \cbr{ \exp(\inner{\wvec_{y_m}}{\xvec_m}) h_m(y_m)} \\
+	y^*_{i-1} &= \argmax_{y_{i-1}} \exp \rbr{\inner{\wvec_{y_{i-1}}}{\xvec_{i-1}} + T_{y_{i-1}, y^*_i}}  h_{i-1}(y_{i-1})  \qquad (\forall\ i = m, m-1, \ldots, 2).
+\end{align}
+
+\paragraph{Comment 3:}
+The above algorithm is called max-product.
+We can also take the log of $h_i(y_i)$ and get the max-sum algorithm:
+\begin{align}
+	l_i(y_i) = \log h_i(y_i) = \max_{y_1, \ldots, y_{i-1}} \cbr{\sum_{j=1}^{i-1} \inner{\wvec_{y_j}}{\xvec_j} + \sum_{j=1}^{i-1} T_{y_j, y_{j+1}}}.
+\end{align}
+
+And the recursion goes by
+\begin{align}
+	l_1(y_1) &= 0, \quad \forall y_1 \in \Ycal \\
+	l_i(y_i) &= \max_{y_{i-1}} \cbr{\inner{\wvec_{y_{i-1}}}{\xvec_{i-1}} + T_{y_{i-1}, y_i} + l_{i-1}(y_{i-1})}, \quad \forall y_i \in \Ycal.
+\end{align}
+And the recovery is
+\begin{align}
+	y^*_m &= \argmax_{y_m} \cbr{ \inner{\wvec_{y_m}}{\xvec_m} + l_m(y_m)} \\
+	y^*_{i-1} &= \argmax_{y_{i-1}} \cbr{ \inner{\wvec_{y_{i-1}}}{\xvec_{i-1}} + T_{y_{i-1}, y^*_i} + l_{i-1}(y_{i-1})}  \qquad (\forall\ i = m, m-1, \ldots, 2).
+\end{align}
+
+\subsection{Marginal distribution}
+\label{sec:marginal}
+
+To compute the marginal distribution, we need the backward messages.
+Define $b_m(y_m) = 1$ for all $y_m \in \Ycal$ and then for all $i = m-1, \ldots, 1$
+\begin{align}
+	b_i(y_i) = \sum_{y_{i+1}, \ldots, y_{m}} \exp \rbr{\sum_{j=i+1}^m \inner{\wvec_{y_j}}{\xvec_j} + \sum_{j=i}^{m-1} T_{y_j, y_{j+1}}}, \quad \forall y_i \in \Ycal.
+\end{align}
+This is exactly the message $m_{(i+1) \to i} (y_i)$ defined in our lecture.
+Then the partition function can be computed by
+\begin{align}
+	Z = \sum_{y_1} \exp \rbr{\inner{\wvec_{y_1}}{\xvec_1}} b_1(y_1).
+\end{align}
+
+
+To compute $b_i(y_i)$, we use recursion by
+\begin{align}
+	\label{eq:rec_Z_forward_1}
+	b_m(y_m) &= 1, \quad \forall y_i \in \Ycal \\
+	b_i(y_i) &= \sum_{y_{i+1}} \exp \rbr{\inner{\wvec_{y_{i+1}}}{\xvec_{i+1}} + T_{y_{i}, y_{i+1}}}
+	\sum_{y_{i+2}, \ldots, y_m} \exp \rbr{\sum_{j=i+2}^{m} \inner{\wvec_{y_j}}{\xvec_j} + \sum_{j=i+1}^{m-1} T_{y_j, y_{j+1}}} \\
+	\label{eq:rec_Z_forward_2}
+	&= \sum_{y_{i+1}}\exp \rbr{\inner{\wvec_{y_{i+1}}}{\xvec_{i+1}} + T_{y_{i}, y_{i+1}}} b_{i+1}(y_{i+1})  \qquad (\forall\ y_i \in \Ycal, \ i = m-1, m-2, \ldots, 1).	 
+\end{align}
+
+Finally, the marginal distribution of $y_i$ is
+\begin{align}
+	p(y_i) \propto f_i(y_i) \cdot b_i(y_i) \cdot \exp \rbr{\inner{\wvec_{y_{i}}}{\xvec_{i}}},
+\end{align}
+followed by local normalization.
+Furthermore, the marginal distribution of $(y_i, y_{i+1})$ is
+\begin{align}
+	p(y_i, y_{i+1}) \propto f_i(y_i) \cdot b_{i+1}(y_{i+1}) \cdot 
+	\exp \rbr{\inner{\wvec_{y_{i}}}{\xvec_{i}} + \inner{\wvec_{y_{i+1}}}{\xvec_{i+1}} + T_{y_i, y_{i+1}}}.
+\end{align}
+
+\paragraph{Comment 4:}
+For numerical robustness,
+we can also turn the backward messages into log space, similar to Comment 1.
+
+
+
+
+\end{document}
