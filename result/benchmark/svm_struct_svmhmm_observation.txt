@@ -1,0 +1,5 @@
+Model: SVM_Struct_SVMHMM
+Best letter-accuracy C: 1000.0 (acc=0.8462)
+Best word-accuracy C: 1000.0 (acc=0.4827)
+Typical pattern: very small C underfits, while very large C may overfit.
+Word accuracy is usually lower and more sensitive than letter accuracy because one wrong letter makes the entire word wrong.
