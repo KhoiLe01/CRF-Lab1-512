@@ -1,3 +1,5 @@
+import numpy as np
+
 # returns objective value
 def objective_value_function(X, W, T, y):
     m = len(X)
@@ -11,15 +13,18 @@ def objective_value_function(X, W, T, y):
     node_score = 0.0
     for s in range(m):
         # current label at position s
+        y[s]
         # get right W row
+        W[y[s]]
         # use dot with X[s]
+        np.dot(W[y[s]] , X[s])
         pass
 
     # edge_score = sum_s T[y[s], y[s+1]]
     edge_score = 0.0
     for s in range(m - 1):
         # add transition from y[s] to y[s+1]
-        pass
+        edge_score += T[y[s]][y[s+1]]
 
     return node_score + edge_score
 
