@@ -1,5 +1,6 @@
 from itertools import product
 import numpy as np
+from pathlib import Path
 
 # returns objective value
 def objective_value_function(X, W, T, y):
@@ -44,7 +45,7 @@ def max_sum_decoder(X, W, T):
     m = len(X)
     num_labels = 26
 
-    dp = np.full((m, num_labels), -np.inf) # dp[s,c] is best score of any sequence up to position s ending in label c
+    dp = np.full((m, num_labels), -np.inf, dtype=float) # dp[s,c] is best score of any sequence up to position s ending in label c
     bp = np.full((m, num_labels), -1, dtype=int) # bp[s,c] best prev label p that leads to dp[s,c]
 
     # base case: position 0
@@ -82,9 +83,84 @@ def max_sum_decoder(X, W, T):
 
     return best_y, best_score
 
-def main():
-    print("Hello from crf-lab1-512!")
+def load_decode_input(filepath, transpose_T=False):
+    vec = np.loadtxt(filepath, dtype=float).reshape(-1)
 
+    m = 100
+    d = 128
+    num_labels = 26
+
+    num_x = m * d
+    num_w = num_labels * d
+    num_t = num_labels * num_labels
+
+    expected = num_x + num_w + num_t
+    assert vec.size == expected, f"Expected {expected} values, got {vec.size}"
+
+    offset = 0
+
+    X = vec[offset : offset + num_x].reshape(m, d)
+    offset += num_x
+
+    W = vec[offset : offset + num_w].reshape(num_labels, d)
+    offset += num_w
+
+    # decode_input stores T11, T12, ..., T1,26, T2,1, ..., T26,26.
+    # with np default C-order reshape this maps directly to T[i, j] = T_{i,j}.
+    T = vec[offset : offset + num_t].reshape(num_labels, num_labels)
+
+    if transpose_T:
+        T = T.T
+
+    return X, W, T
+
+def write_decode_output(y, filepath):
+    path = Path(filepath)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(path, "w") as f:
+        for label in y:
+            f.write(f"{label + 1}\n")
+
+def tiny_sanity_check():
+    rng = np.random.default_rng(0)
+
+    m = 3
+    d = 128
+    X = rng.normal(size=(m, d))
+    W = rng.normal(size=(26, d))
+    T = rng.normal(size=(26, 26))
+
+    y_bf, score_bf = brute_force_decoder(X, W, T)
+    y_dp, score_dp = max_sum_decoder(X, W, T)
+
+    print("Tiny sanity check")
+    print("Brute-force y:", y_bf)
+    print("DP y         :", y_dp)
+    print("Brute-force score:", score_bf)
+    print("DP score         :", score_dp)
+
+    assert tuple(y_dp) == tuple(y_bf)
+    assert np.isclose(score_bf, score_dp)
+
+    return True, score_bf, score_dp
+
+
+def decode_real_case(input_path="data/decode_input.txt", transpose_T=False):
+    X, W, T = load_decode_input(input_path, transpose_T=transpose_T)
+    print("Loaded shapes: X", X.shape, "W", W.shape, "T", T.shape)
+    y_star, best_score = max_sum_decoder(X, W, T)
+    write_decode_output(y_star, "result/decode_output.txt")
+
+    print("Best objective value:", best_score)
+    print("Wrote result/decode_output.txt")
+
+    return y_star, best_score
+
+
+def main():
+    tiny_sanity_check() # verify DP against brute force on a tiny case
+    decode_real_case(input_path="data/decode_input.txt", transpose_T=False) # Decode the real 100-letter case
 
 if __name__ == "__main__":
     main()
