@@ -270,6 +270,339 @@ Given these parameters (\eg\ by learning from data), the model \eqref{eq:crf} ca
 	give a brief description especially the formula of recursion.
 \end{itemize}
 
+
+\paragraph{(1a) Derivative with respect to $\wvec_c$.}
+For a fixed training example $(X^t,\yvec^t)$, define
+\begin{align}
+S(X^t,\yvec)
+=
+\sum_{s=1}^m \inner{\wvec_{y_s}}{\xvec_s^t}
++
+\sum_{s=1}^{m-1} T_{y_s,y_{s+1}}.
+\end{align}
+Then
+\begin{align}
+\log p(\yvec^t \mid X^t)
+&=
+\log \frac{1}{Z_{X^t}} \exp\!\bigl(S(X^t,\yvec^t)\bigr) \\
+&=
+S(X^t,\yvec^t) - \log Z_{X^t}.
+\end{align}
+Therefore,
+\begin{align}
+\grad_{\wvec_c}\log p(\yvec^t \mid X^t)
+=
+\grad_{\wvec_c} S(X^t,\yvec^t)
+-
+\grad_{\wvec_c}\log Z_{X^t}.
+\end{align}
+
+We now compute the two terms separately.
+
+First,
+\begin{align}
+\grad_{\wvec_c} S(X^t,\yvec^t)
+&=
+\grad_{\wvec_c}
+\left(
+\sum_{s=1}^m \inner{\wvec_{y_s^t}}{\xvec_s^t}
++
+\sum_{s=1}^{m-1} T_{y_s^t,y_{s+1}^t}
+\right) \\
+&=
+\grad_{\wvec_c}
+\sum_{s=1}^m \inner{\wvec_{y_s^t}}{\xvec_s^t}
+\end{align}
+since the transition term does not depend on $\wvec_c$. For each position $s$,
+\begin{align}
+\grad_{\wvec_c}\inner{\wvec_{y_s^t}}{\xvec_s^t}
+=
+\llbracket y_s^t = c \rrbracket \xvec_s^t.
+\end{align}
+Hence,
+\begin{align}
+\grad_{\wvec_c} S(X^t,\yvec^t)
+=
+\sum_{s=1}^m \llbracket y_s^t = c \rrbracket \xvec_s^t.
+\end{align}
+
+Next,
+\begin{align}
+\grad_{\wvec_c}\log Z_{X^t}
+&=
+\frac{1}{Z_{X^t}} \grad_{\wvec_c} Z_{X^t} \\
+&=
+\frac{1}{Z_{X^t}}
+\grad_{\wvec_c}
+\sum_{\hat{\yvec}\in\Ycal^m}
+\exp\!\bigl(S(X^t,\hat{\yvec})\bigr) \\
+&=
+\frac{1}{Z_{X^t}}
+\sum_{\hat{\yvec}\in\Ycal^m}
+\exp\!\bigl(S(X^t,\hat{\yvec})\bigr)
+\grad_{\wvec_c} S(X^t,\hat{\yvec}).
+\end{align}
+Also,
+\begin{align}
+\grad_{\wvec_c} S(X^t,\hat{\yvec})
+=
+\sum_{s=1}^m \llbracket \hat y_s = c \rrbracket \xvec_s^t.
+\end{align}
+Substituting,
+\begin{align}
+\grad_{\wvec_c}\log Z_{X^t}
+&=
+\frac{1}{Z_{X^t}}
+\sum_{\hat{\yvec}\in\Ycal^m}
+\exp\!\bigl(S(X^t,\hat{\yvec})\bigr)
+\sum_{s=1}^m \llbracket \hat y_s = c \rrbracket \xvec_s^t \\
+&=
+\sum_{\hat{\yvec}\in\Ycal^m}
+p(\hat{\yvec}\mid X^t)
+\sum_{s=1}^m \llbracket \hat y_s = c \rrbracket \xvec_s^t \\
+&=
+\sum_{s=1}^m
+\left(
+\sum_{\hat{\yvec}\in\Ycal^m}
+p(\hat{\yvec}\mid X^t)\llbracket \hat y_s = c \rrbracket
+\right)\xvec_s^t \\
+&=
+\sum_{s=1}^m p(y_s = c \mid X^t)\xvec_s^t,
+\end{align}
+where the last equality uses the definition of the marginal probability.
+
+Combining the two parts,
+\begin{align}
+\grad_{\wvec_c}\log p(\yvec^t \mid X^t)
+&=
+\sum_{s=1}^m \llbracket y_s^t = c \rrbracket \xvec_s^t
+-
+\sum_{s=1}^m p(y_s = c \mid X^t)\xvec_s^t \\
+&=
+\sum_{s=1}^m
+\bigl(
+\llbracket y_s^t = c \rrbracket - p(y_s = c \mid X^t)
+\bigr)\xvec_s^t.
+\end{align}
+
+\paragraph{Derivative with respect to $T_{ij}$.}
+Similarly,
+\begin{align}
+\grad_{T_{ij}}\log p(\yvec^t \mid X^t)
+=
+\grad_{T_{ij}} S(X^t,\yvec^t)
+-
+\grad_{T_{ij}}\log Z_{X^t}.
+\end{align}
+
+For the first term,
+\begin{align}
+\grad_{T_{ij}} S(X^t,\yvec^t)
+&=
+\grad_{T_{ij}}
+\left(
+\sum_{s=1}^m \inner{\wvec_{y_s^t}}{\xvec_s^t}
++
+\sum_{s=1}^{m-1} T_{y_s^t,y_{s+1}^t}
+\right) \\
+&=
+\grad_{T_{ij}}
+\sum_{s=1}^{m-1} T_{y_s^t,y_{s+1}^t} \\
+&=
+\sum_{s=1}^{m-1}
+\llbracket (y_s^t,y_{s+1}^t) = (i,j) \rrbracket.
+\end{align}
+
+For the second term,
+\begin{align}
+\grad_{T_{ij}}\log Z_{X^t}
+&=
+\frac{1}{Z_{X^t}}
+\sum_{\hat{\yvec}\in\Ycal^m}
+\exp\!\bigl(S(X^t,\hat{\yvec})\bigr)
+\grad_{T_{ij}} S(X^t,\hat{\yvec}) \\
+&=
+\sum_{\hat{\yvec}\in\Ycal^m}
+p(\hat{\yvec}\mid X^t)
+\sum_{s=1}^{m-1}
+\llbracket (\hat y_s,\hat y_{s+1}) = (i,j) \rrbracket \\
+&=
+\sum_{s=1}^{m-1}
+\left(
+\sum_{\hat{\yvec}\in\Ycal^m}
+p(\hat{\yvec}\mid X^t)
+\llbracket (\hat y_s,\hat y_{s+1}) = (i,j) \rrbracket
+\right) \\
+&=
+\sum_{s=1}^{m-1}
+p(y_s=i,y_{s+1}=j \mid X^t),
+\end{align}
+where the last equality is the pairwise marginal probability.
+
+Therefore,
+\begin{align}
+\grad_{T_{ij}}\log p(\yvec^t \mid X^t)
+&=
+\sum_{s=1}^{m-1}
+\llbracket (y_s^t,y_{s+1}^t) = (i,j) \rrbracket
+-
+\sum_{s=1}^{m-1}
+p(y_s=i,y_{s+1}=j \mid X^t) \\
+&=
+\sum_{s=1}^{m-1}
+\left(
+\llbracket (y_s^t,y_{s+1}^t) = (i,j) \rrbracket
+-
+p(y_s=i,y_{s+1}=j \mid X^t)
+\right).
+\end{align}
+
+\paragraph{(1b) Gradient of $\log Z_X$ as an expectation of features.}
+Recall
+\begin{align}
+Z_X
+=
+\sum_{\hat{\yvec}\in\Ycal^m}
+\exp\!\left(
+\sum_{s=1}^m \inner{\wvec_{\hat y_s}}{\xvec_s}
++
+\sum_{s=1}^{m-1} T_{\hat y_s,\hat y_{s+1}}
+\right).
+\end{align}
+We show that the gradient of $\log Z_X$ with respect to $\wvec_c$ and $T_{ij}$ is the expectation of suitable feature functions under $p(\yvec\mid X)$.
+
+\paragraph{Gradient with respect to $\wvec_c$.}
+Define the node feature
+\begin{align}
+f_c(X,\yvec)
+:=
+\sum_{s=1}^m \llbracket y_s = c \rrbracket \xvec_s
+\in \RR^{128}.
+\end{align}
+Then
+\begin{align}
+\grad_{\wvec_c}\log Z_X
+&=
+\frac{1}{Z_X}\grad_{\wvec_c} Z_X \\
+&=
+\frac{1}{Z_X}
+\sum_{\hat{\yvec}\in\Ycal^m}
+\exp\!\left(
+\sum_{s=1}^m \inner{\wvec_{\hat y_s}}{\xvec_s}
++
+\sum_{s=1}^{m-1} T_{\hat y_s,\hat y_{s+1}}
+\right)
+\grad_{\wvec_c}
+\left(
+\sum_{s=1}^m \inner{\wvec_{\hat y_s}}{\xvec_s}
++
+\sum_{s=1}^{m-1} T_{\hat y_s,\hat y_{s+1}}
+\right) \\
+&=
+\frac{1}{Z_X}
+\sum_{\hat{\yvec}\in\Ycal^m}
+\exp\!\left(
+\sum_{s=1}^m \inner{\wvec_{\hat y_s}}{\xvec_s}
++
+\sum_{s=1}^{m-1} T_{\hat y_s,\hat y_{s+1}}
+\right)
+\sum_{s=1}^m \llbracket \hat y_s = c \rrbracket \xvec_s \\
+&=
+\sum_{\hat{\yvec}\in\Ycal^m}
+p(\hat{\yvec}\mid X)
+\sum_{s=1}^m \llbracket \hat y_s = c \rrbracket \xvec_s \\
+&=
+\Exp_{p(\yvec\mid X)}\!\left[
+\sum_{s=1}^m \llbracket y_s = c \rrbracket \xvec_s
+\right] \\
+&=
+\Exp_{p(\yvec\mid X)}\!\left[f_c(X,\yvec)\right].
+\end{align}
+Thus, $\grad_{\wvec_c}\log Z_X$ is the expectation of the node feature $f_c(X,\yvec)$.
+
+\paragraph{Gradient with respect to $T_{ij}$.}
+Using the hint,
+\begin{align}
+T_{y_s,y_{s+1}}
+=
+\sum_{p\in\Ycal}\sum_{q\in\Ycal}
+T_{pq}\,\llbracket (y_s,y_{s+1})=(p,q)\rrbracket.
+\end{align}
+Hence, for fixed $(i,j)$, define the edge feature
+\begin{align}
+g_{ij}(X,\yvec)
+:=
+\sum_{s=1}^{m-1}
+\llbracket (y_s,y_{s+1})=(i,j)\rrbracket.
+\end{align}
+Then
+\begin{align}
+\grad_{T_{ij}}\log Z_X
+&=
+\frac{1}{Z_X}\grad_{T_{ij}} Z_X \\
+&=
+\frac{1}{Z_X}
+\sum_{\hat{\yvec}\in\Ycal^m}
+\exp\!\left(
+\sum_{s=1}^m \inner{\wvec_{\hat y_s}}{\xvec_s}
++
+\sum_{s=1}^{m-1} T_{\hat y_s,\hat y_{s+1}}
+\right)
+\grad_{T_{ij}}
+\left(
+\sum_{s=1}^m \inner{\wvec_{\hat y_s}}{\xvec_s}
++
+\sum_{s=1}^{m-1} T_{\hat y_s,\hat y_{s+1}}
+\right) \\
+&=
+\frac{1}{Z_X}
+\sum_{\hat{\yvec}\in\Ycal^m}
+\exp\!\left(
+\sum_{s=1}^m \inner{\wvec_{\hat y_s}}{\xvec_s}
++
+\sum_{s=1}^{m-1} T_{\hat y_s,\hat y_{s+1}}
+\right)
+\sum_{s=1}^{m-1}
+\llbracket (\hat y_s,\hat y_{s+1})=(i,j)\rrbracket \\
+&=
+\sum_{\hat{\yvec}\in\Ycal^m}
+p(\hat{\yvec}\mid X)
+\sum_{s=1}^{m-1}
+\llbracket (\hat y_s,\hat y_{s+1})=(i,j)\rrbracket \\
+&=
+\Exp_{p(\yvec\mid X)}\!\left[
+\sum_{s=1}^{m-1}
+\llbracket (y_s,y_{s+1})=(i,j)\rrbracket
+\right] \\
+&=
+\Exp_{p(\yvec\mid X)}\!\left[g_{ij}(X,\yvec)\right].
+\end{align}
+Thus, $\grad_{T_{ij}}\log Z_X$ is the expectation of the edge feature $g_{ij}(X,\yvec)$.
+
+\paragraph{Conclusion.}
+The required features are:
+\begin{align}
+f_c(X,\yvec)
+&=
+\sum_{s=1}^m \llbracket y_s = c \rrbracket \xvec_s,
+\\
+g_{ij}(X,\yvec)
+&=
+\sum_{s=1}^{m-1}
+\llbracket (y_s,y_{s+1})=(i,j)\rrbracket.
+\end{align}
+Therefore,
+\begin{align}
+\grad_{\wvec_c}\log Z_X
+&=
+\Exp_{p(\yvec\mid X)}[f_c(X,\yvec)],
+\\
+\grad_{T_{ij}}\log Z_X
+&=
+\Exp_{p(\yvec\mid X)}[g_{ij}(X,\yvec)].
+\end{align}
+Equivalently, the gradient of $\log Z_X$ is the expected feature count under the model distribution $p(\yvec\mid X)$.
+
 %\newpage
 %Denote $m_{y_0 \to y_1}(y_1) = 1$ for all $y_1 \in \Ycal$.
 %
@@ -679,11 +1012,11 @@ Then
 
 To compute $f_i(y_i)$, we use recursion by
 \begin{align}
-	\label{eq:rec_Z_forward_1}
+		\label{eq:rec_Z_backward_1}
 	f_1(y_1) &= 1, \quad \forall y_1 \in \Ycal \\
 	f_i(y_i) &= \sum_{y_{i-1}} \exp \rbr{\inner{\wvec_{y_{i-1}}}{\xvec_{i-1}} + T_{y_{i-1}, y_i}}
 	\sum_{y_1, \ldots, y_{i-2}} \exp \rbr{\sum_{j=1}^{i-2} \inner{\wvec_{y_j}}{\xvec_j} + \sum_{j=1}^{i-2} T_{y_j, y_{j+1}}} \\
-	\label{eq:rec_Z_forward_2}
+		\label{eq:rec_Z_backward_2}
 	&= \sum_{y_{i-1}} \exp \rbr{\inner{\wvec_{y_{i-1}}}{\xvec_{i-1}} + T_{y_{i-1}, y_i}}  \cdot f_{i-1}(y_{i-1})  \qquad (\forall\ y_i \in \Ycal, \ i = 2, 3, \ldots, m).	 
 \end{align}
 
