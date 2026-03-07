@@ -1,5 +1,6 @@
 import numpy as np
 from pathlib import Path
+from scipy.optimize import fmin_tnc
 
 def logsumexp(arr):
     M = np.max(arr)
@@ -81,8 +82,6 @@ def log_likelihood_and_gradient_single(X, y, W, T):
     edge_log_marg = compute_edge_log_marginals(phi, alpha, beta, T, logZ)
     edge_marg = np.exp(edge_log_marg)
 
-    sanity_check_marginals(node_marg, edge_marg)
-
     grad_W = np.zeros_like(W)
     for s in range(m):
         for c in range(W.shape[0]):
@@ -122,14 +121,12 @@ def average_log_likelihood_and_gradient(words, W, T):
 def pack_params(W, T):
     return np.concatenate([W.reshape(-1), T.reshape(-1)])
 
-def load_model(filepath, num_labels=26, feat_dim=128):
-    vec = np.loadtxt(filepath, dtype=float).reshape(-1)
-
+def unpack_params(theta, num_labels=26, feat_dim=128):
     num_w = num_labels * feat_dim
     num_t = num_labels * num_labels
 
-    W = vec[:num_w].reshape(num_labels, feat_dim)
-    T = vec[num_w:num_w + num_t].reshape(num_labels, num_labels)
+    W = theta[:num_w].reshape(num_labels, feat_dim)
+    T = theta[num_w:num_w + num_t].reshape(num_labels, num_labels)
 
     return W, T
 
@@ -163,3 +160,103 @@ def parse_ocr_file(filepath):
 
     assert len(cur_X) == 0 and len(cur_y) == 0
     return words
+
+def write_vector(filepath, vec):
+    path = Path(filepath)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    np.savetxt(path, vec, fmt="%.18e")
+
+
+def objective_and_gradient(theta, words, C=1000):
+    W, T = unpack_params(theta)
+
+    avg_logp, avg_grad_W_logp, avg_grad_T_logp = average_log_likelihood_and_gradient(words, W, T)
+
+    obj = -C * avg_logp + 0.5 * np.sum(W * W) + 0.5 * np.sum(T * T)
+
+    grad_W = -C * avg_grad_W_logp + W
+    grad_T = -C * avg_grad_T_logp + T
+
+    grad = pack_params(grad_W, grad_T)
+
+    return obj, grad
+
+def max_sum_decoder(X, W, T):
+    m = len(X)
+    num_labels = 26
+
+    dp = np.full((m, num_labels), -np.inf, dtype=float)
+    bp = np.full((m, num_labels), -1, dtype=int)
+
+    for c in range(num_labels):
+        dp[0, c] = np.dot(W[c], X[0])
+
+    for s in range(1, m):
+        for c in range(num_labels):
+            node_score = np.dot(W[c], X[s])
+            best_prev_score = -np.inf
+            best_prev_label = -1
+
+            for p in range(num_labels):
+                cand = dp[s - 1, p] + T[p, c] + node_score
+                if cand > best_prev_score:
+                    best_prev_score = cand
+                    best_prev_label = p
+
+            dp[s, c] = best_prev_score
+            bp[s, c] = best_prev_label
+
+    best_last = int(np.argmax(dp[m - 1]))
+    best_score = float(dp[m - 1, best_last])
+
+    best_y = [0] * m
+    best_y[m - 1] = best_last
+
+    for s in range(m - 1, 0, -1):
+        best_y[s - 1] = int(bp[s, best_y[s]])
+
+    return best_y, best_score
+
+def write_predictions(filepath, predictions):
+    path = Path(filepath)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(path, "w") as f:
+        for y in predictions:
+            f.write(f"{y + 1}\n")   # convert 0-based to 1-based
+
+
+def main():
+    words = parse_ocr_file("../../data/train.txt")
+
+    theta0 = np.zeros(26*128 + 26*26)
+
+    theta_opt, nfeval, rc = fmin_tnc(
+        func=lambda th: objective_and_gradient(th, words),
+        x0=theta0,
+        bounds=None
+    )
+
+    write_vector("result/solution.txt", theta_opt)
+    
+    W_opt, T_opt = unpack_params(theta_opt)
+
+    final_obj, _ = objective_and_gradient(theta_opt, words)
+    print("final_objective =", final_obj)
+    print("nfeval =", nfeval)
+    print("rc =", rc)
+
+    test_words = parse_ocr_file("../../data/test.txt")
+
+    predictions = []
+    for word in test_words:
+        y_pred, _ = max_sum_decoder(word["X"], W_opt, T_opt)
+        predictions.extend(y_pred)
+
+    write_predictions("result/prediction.txt", predictions)
+    print("wrote result/solution.txt")
+    print("wrote result/prediction.txt")
+
+
+if __name__ == "__main__":
+    main()
