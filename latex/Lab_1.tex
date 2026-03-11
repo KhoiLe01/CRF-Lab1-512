@@ -35,7 +35,7 @@
 
 
 % Fill in your name and email address
-\stuinfo{Your Name}{netid@uic.edu}
+\stuinfo{\shortstack[l]{Angelo Zangari\\Khoi Le\\Javed Shah}}{\shortstack[l]{azang@uic.edu\\kle539@uic.edu\\jshah93@uic.edu}}
 \graphicspath{{./}{./Figures/}}
 
 \begin{document}
@@ -777,9 +777,78 @@ The meaning of the fields in each line is described in \verb#data/fields_struct.
 	
 	\textbf{Hint}: to roughly find a reasonable range of \verb#-c#, a commonly used heuristic is to try on a small sub-sample of the data, and then apply it to a larger data set (be wary of normalization by the number of training example for LibLinear as mentioned above).
 	
-	What observation can be made on the result?
+	We evaluated all three models on $C \in \{1, 10, 100, 1000\}$. The resulting letter-wise accuracy plots are shown in Figures~\ref{fig:q3a_crf_letter}, \ref{fig:q3a_svmmc_letter}, and \ref{fig:q3a_svmstruct_letter}.
+	\begin{figure}[H]
+	    \centering
+	    \begin{minipage}[b]{0.32\textwidth}
+	        \centering
+	        \includegraphics[width=\textwidth]{../result/other/benchmark/crf_letter_acc.png}
+	        \caption{CRF letter-wise accuracy}
+	        \label{fig:q3a_crf_letter}
+	    \end{minipage}
+	    \hfill
+	    \begin{minipage}[b]{0.32\textwidth}
+	        \centering
+	        \includegraphics[width=\textwidth]{../result/other/benchmark/svm_mc_letter_acc.png}
+	        \caption{SVM-MC letter-wise accuracy}
+	        \label{fig:q3a_svmmc_letter}
+	    \end{minipage}
+	    \hfill
+	    \begin{minipage}[b]{0.32\textwidth}
+	        \centering
+	        \includegraphics[width=\textwidth]{../result/other/benchmark/svm_struct_svmhmm_letter_acc.png}
+	        \caption{SVM-Struct letter-wise accuracy}
+	        \label{fig:q3a_svmstruct_letter}
+	    \end{minipage}
+	\end{figure}
+	The corresponding letter-wise accuracies are:
+	\[
+	\begin{array}{c|cccc}
+	C & 1 & 10 & 100 & 1000 \\
+	\hline
+	\text{CRF} & 0.4483 & 0.6915 & 0.8056 & 0.8375 \\
+	\text{SVM-MC} & 0.6998 & 0.6996 & 0.6993 & 0.6992 \\
+	\text{SVM-Struct} & 0.6757 & 0.7534 & 0.8224 & 0.8462
+	\end{array}
+	\]
+	The main observation is that CRF and SVM-Struct both benefit strongly from increasing $C$, while SVM-MC is nearly flat and even slightly worse as $C$ increases. The best letter-wise results are achieved by SVM-Struct at $C=1000$ with accuracy $0.8462$, followed closely by CRF at $C=1000$ with accuracy $0.8375$. SVM-MC remains around $0.70$ regardless of $C$, showing that an independent-letter classifier cannot exploit sequence structure.
 	
 	\item[(3b)] {\bf [5 Marks]} Produce another three plots for word-wise prediction accuracy on test data.  What observation can be made on the result?
+	The word-wise accuracy plots are shown in Figures~\ref{fig:q3b_crf_word}, \ref{fig:q3b_svmmc_word}, and \ref{fig:q3b_svmstruct_word}.
+	\begin{figure}[H]
+	    \centering
+	    \begin{minipage}[b]{0.32\textwidth}
+	        \centering
+	        \includegraphics[width=\textwidth]{../result/other/benchmark/crf_word_acc.png}
+	        \caption{CRF word-wise accuracy}
+	        \label{fig:q3b_crf_word}
+	    \end{minipage}
+	    \hfill
+	    \begin{minipage}[b]{0.32\textwidth}
+	        \centering
+	        \includegraphics[width=\textwidth]{../result/other/benchmark/svm_mc_word_acc.png}
+	        \caption{SVM-MC word-wise accuracy}
+	        \label{fig:q3b_svmmc_word}
+	    \end{minipage}
+	    \hfill
+	    \begin{minipage}[b]{0.32\textwidth}
+	        \centering
+	        \includegraphics[width=\textwidth]{../result/other/benchmark/svm_struct_svmhmm_word_acc.png}
+	        \caption{SVM-Struct word-wise accuracy}
+	        \label{fig:q3b_svmstruct_word}
+	    \end{minipage}
+	\end{figure}
+	The corresponding word-wise accuracies are:
+	\[
+	\begin{array}{c|cccc}
+	C & 1 & 10 & 100 & 1000 \\
+	\hline
+	\text{CRF} & 0.0119 & 0.1620 & 0.3812 & 0.4725 \\
+	\text{SVM-MC} & 0.1736 & 0.1713 & 0.1721 & 0.1701 \\
+	\text{SVM-Struct} & 0.1663 & 0.2623 & 0.4135 & 0.4827
+	\end{array}
+	\]
+	At the word level, the advantage of structured models is even clearer. SVM-MC stays around $0.17$, which is much lower than its letter-wise accuracy because one wrong letter makes the whole word incorrect. In contrast, CRF and SVM-Struct improve substantially as $C$ increases, reaching $0.4725$ and $0.4827$ respectively at $C=1000$. This shows that modeling transitions between neighboring letters provides a large benefit, especially for full-word prediction.
 	%Note in SVM-MC, we used the trick of treating each letter as a word. Therefore some conversion is needed to compute the word-wise accuracy. So another file \verb#data/test_index.txt# is provided.  Each line of it corresponds to a letter in the test set, and it has the same number of lines as \verb#test_mc.txt#.  Each line has a single integer which is the word-id from the original data.  So two lines with the same integer means their corresponding letters belong to the same word.
 \end{itemize}
 
@@ -947,13 +1016,13 @@ For this section, you should fix the value of $C$ in the CRF to the best value f
 From our experiment, the learning rate is the most important factor for the stochastic gradient descent approaches. We noticed that for the learning rate of $0.1$ and $0.01$ the SGD's objective is very unstable as it tends to diverge away from the initial objective value. The value of $0.001$ is better, but the objective values is still noisy and does not converge near optimal values found by LBFGS. The learning rate between $0.0005$ and $0.0001$ is ideal as the objective values converge quickly to almost optimal.
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.6\linewidth]{../code/khoi/generated_graphs/mcmc_performance_B10_lr0_001_mom0_2.png}
+    \includegraphics[width=0.6\linewidth]{../code/other/khoi/generated_graphs/mcmc_performance_B10_lr0_001_mom0_2.png}
     \caption{$B=10$, learning rate $=0.001$, momentum $=0.2$}
     \label{fig:4alr1}
 \end{figure}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.6\linewidth]{../code/khoi/generated_graphs/mcmc_performance_B10_lr0_0003_mom0_2.png}
+    \includegraphics[width=0.6\linewidth]{../code/other/khoi/generated_graphs/mcmc_performance_B10_lr0_0003_mom0_2.png}
     \caption{$B=10$, learning rate $=0.0003$, momentum $=0.2$}
     \label{fig:4alr2}
 \end{figure}
@@ -961,39 +1030,39 @@ From our experiment, the learning rate is the most important factor for the stoc
 \noindent Another trend we find is that values of $B$ between $10$ and $20$ tend to return objective value to be close to that of LBFGS. Lower value of $B$ such that $B=5$ makes the SGD's objective to oscillate as demonstrated in the following graphs:
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.6\linewidth]{../code/khoi/generated_graphs/mcmc_performance_B5_lr0_001_mom0_2.png}
+    \includegraphics[width=0.6\linewidth]{../code/other/khoi/generated_graphs/mcmc_performance_B5_lr0_001_mom0_2.png}
     \caption{$B=5$, learning rate $=0.001$, momentum $=0.2$}
     \label{fig:4aB1}
 \end{figure}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.6\linewidth]{../code/khoi/generated_graphs/mcmc_performance_B20_lr0_001_mom0_2.png}
+    \includegraphics[width=0.6\linewidth]{../code/other/khoi/generated_graphs/mcmc_performance_B20_lr0_001_mom0_2.png}
     \caption{$B=20$, learning rate $=0.001$, momentum $=0.2$}
     \label{fig:4aB2}
 \end{figure}
 \noindent Regarding momentum, large value such as 0.9 to sometimes even 0.5 cause noises and inability to converge close to optimal. Details can be found below for momentum value of 0.9, 0.5, and 0.2:
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.6\linewidth]{../code/khoi/generated_graphs/mcmc_performance_B2_lr0_0003_mom0_9.png}
+    \includegraphics[width=0.6\linewidth]{../code/other/khoi/generated_graphs/mcmc_performance_B2_lr0_0003_mom0_9.png}
     \caption{$B=2$, learning rate $=0.0003$, momentum $=0.9$}
     \label{fig:4am1}
 \end{figure}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.6\linewidth]{../code/khoi/generated_graphs/mcmc_performance_B2_lr0_0003_mom0_5.png}
+    \includegraphics[width=0.6\linewidth]{../code/other/khoi/generated_graphs/mcmc_performance_B2_lr0_0003_mom0_5.png}
     \caption{$B=2$, learning rate $=0.0003$, momentum $=0.5$}
     \label{fig:4am2}
 \end{figure}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.6\linewidth]{../code/khoi/generated_graphs/mcmc_performance_B2_lr0_0003_mom0_2.png}
+    \includegraphics[width=0.6\linewidth]{../code/other/khoi/generated_graphs/mcmc_performance_B2_lr0_0003_mom0_2.png}
     \caption{$B=2$, learning rate $=0.0003$, momentum $=0.2$}
     \label{fig:4am3}
 \end{figure}
 \noindent Thus, for our experiment, we decide to choose $B=10$, learning rate to be $0.0003$, and momentum to be $0.2$ to obtain the following graph:
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.6\linewidth]{../code/khoi/generated_graphs/4a_mcmc_performance_B10_lr0_0003_mom0_2.png}
+    \includegraphics[width=0.6\linewidth]{../code/other/khoi/generated_graphs/4a_mcmc_performance_B10_lr0_0003_mom0_2.png}
     \caption{Final selection: $B=10$, learning rate $=0.0003$, momentum $=0.2$}
     \label{fig:final4a}
 \end{figure}
@@ -1012,13 +1081,13 @@ The first thing to mention is that LBFGS of scipy works well only with non-stoch
     \centering
     \begin{minipage}[b]{0.45\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/LBFGS_S_5.png}
+        \includegraphics[width=\textwidth]{../code/other/khoi/generated_graphs/LBFGS_S_5.png}
         % \caption{Caption for Image 1}
     \end{minipage}
     \hfill
     \begin{minipage}[b]{0.45\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/LBFGS_S_10.png}
+        \includegraphics[width=\textwidth]{../code/other/khoi/generated_graphs/LBFGS_S_10.png}
         % \caption{Caption for Image 2}
     \end{minipage}
 \end{figure}
@@ -1027,7 +1096,7 @@ The first thing to mention is that LBFGS of scipy works well only with non-stoch
     \centering
     \begin{minipage}[b]{0.45\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/LBFGS_S_50.png}
+        \includegraphics[width=\textwidth]{../code/other/khoi/generated_graphs/LBFGS_S_50.png}
         % \caption{Caption for Image 1}
     \end{minipage}
 \end{figure}
@@ -1037,12 +1106,12 @@ Regarding the performance for the MCMC and RB MCMC, we produced the following gr
     \centering
     \begin{minipage}[b]{0.45\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_2_Objective.png}
+        \includegraphics[width=\textwidth]{../code/other/khoi/generated_graphs/S_2_Objective.png}
     \end{minipage}
     \hfill
     \begin{minipage}[b]{0.45\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_2_Error.png}
+        \includegraphics[width=\textwidth]{../code/other/khoi/generated_graphs/S_2_Error.png}
     \end{minipage}
     \caption{$S=2$}
 \end{figure}
@@ -1050,12 +1119,12 @@ Regarding the performance for the MCMC and RB MCMC, we produced the following gr
     \centering
     \begin{minipage}[b]{0.45\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_5_Objective.png}
+        \includegraphics[width=\textwidth]{../code/other/khoi/generated_graphs/S_5_Objective.png}
     \end{minipage}
     \hfill
     \begin{minipage}[b]{0.45\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_5_Error.png}
+        \includegraphics[width=\textwidth]{../code/other/khoi/generated_graphs/S_5_Error.png}
     \end{minipage}
     \caption{$S=5$}
 \end{figure}
@@ -1063,12 +1132,12 @@ Regarding the performance for the MCMC and RB MCMC, we produced the following gr
     \centering
     \begin{minipage}[b]{0.45\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_10_Objective.png}
+        \includegraphics[width=\textwidth]{../code/other/khoi/generated_graphs/S_10_Objective.png}
     \end{minipage}
     \hfill
     \begin{minipage}[b]{0.45\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_10_Error.png}
+        \includegraphics[width=\textwidth]{../code/other/khoi/generated_graphs/S_10_Error.png}
     \end{minipage}
     \caption{$S=10$}
 \end{figure}
@@ -1076,12 +1145,12 @@ Regarding the performance for the MCMC and RB MCMC, we produced the following gr
     \centering
     \begin{minipage}[b]{0.45\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_50_Objective.png}
+        \includegraphics[width=\textwidth]{../code/other/khoi/generated_graphs/S_50_Objective.png}
     \end{minipage}
     \hfill
     \begin{minipage}[b]{0.45\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_50_Error.png}
+        \includegraphics[width=\textwidth]{../code/other/khoi/generated_graphs/S_50_Error.png}
     \end{minipage}
     \caption{$S=50$}
 \end{figure}
@@ -1091,13 +1160,13 @@ We can see the reduction in the noise and value of the objective by taking the l
     \centering
     \begin{minipage}[b]{0.45\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_2_Objective_Log.png}
+        \includegraphics[width=\textwidth]{../code/other/khoi/generated_graphs/S_2_Objective_Log.png}
         \caption{log objective for $S=2$}
     \end{minipage}
     \hfill
     \begin{minipage}[b]{0.45\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_5_Objective_Log.png}
+        \includegraphics[width=\textwidth]{../code/other/khoi/generated_graphs/S_5_Objective_Log.png}
         \caption{log objective for $S=5$}
     \end{minipage}
 \end{figure}
@@ -1105,13 +1174,13 @@ We can see the reduction in the noise and value of the objective by taking the l
     \centering
     \begin{minipage}[b]{0.45\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_10_Objective_Log.png}
+        \includegraphics[width=\textwidth]{../code/other/khoi/generated_graphs/S_10_Objective_Log.png}
         \caption{log objective for $S=10$}
     \end{minipage}
     \hfill
     \begin{minipage}[b]{0.45\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_50_Objective_Log.png}
+        \includegraphics[width=\textwidth]{../code/other/khoi/generated_graphs/S_50_Objective_Log.png}
         \caption{log objective for $S=50$}
     \end{minipage}
 \end{figure}
@@ -1136,7 +1205,7 @@ We can see the reduction in the noise and value of the objective by taking the l
 Using $S$ to be $\{5, 10, 50, 100, 500, 1000\}$, we obtained the following graph:
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.7\linewidth]{../code/khoi/generated_graphs/kl_divergence_comparison.png}
+    \includegraphics[width=0.7\linewidth]{../code/other/khoi/generated_graphs/kl_divergence_comparison.png}
     \caption{KL divergence comparison of MCMC method and RB MCMC method for nodes and edges.}
     \label{fig:4cii}
 \end{figure}
@@ -1202,7 +1271,7 @@ All line numbers appear exactly once.
 	\]
 	\begin{figure}[H]
 	    \centering
-	    \includegraphics[width=0.68\linewidth]{../code/angelo/results/q5_letter_accuracy.png}
+	    \includegraphics[width=0.68\linewidth]{../code/results/q5_letter_accuracy.png}
 	    \caption{Question 5(a): letter-wise test accuracy versus number of applied training distortions.}
 	    \label{fig:q5_letter_acc}
 	\end{figure}
@@ -1220,7 +1289,7 @@ All line numbers appear exactly once.
 	\]
 	\begin{figure}[H]
 	    \centering
-	    \includegraphics[width=0.68\linewidth]{../code/angelo/results/q5_word_accuracy.png}
+	    \includegraphics[width=0.68\linewidth]{../code/results/q5_word_accuracy.png}
 	    \caption{Question 5(b): word-wise test accuracy versus number of applied training distortions.}
 	    \label{fig:q5_word_acc}
 	\end{figure}

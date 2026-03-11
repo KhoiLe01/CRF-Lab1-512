@@ -1,14 +1,15 @@
 # Lab 1 for the Advanced Machine Learning course (CS512) - Spring '26
 
 ## Repository structure
-#TODO
+For the submission-oriented code layout and run instructions, see `code/readme.txt`.
+
+Top-level submission artifacts are organized as follows:
+- `code/`: runnable source files for the assignment
+- `result/`: the four required output result files
+- `build/`: compiled PDF output
+- `latex/`: report source
 
 ## Running the code
-You can run the code simply with:
-`uv sync` to install all the required dependencies
-`uv run ...`
+The detailed code structure and question-by-question run commands are documented in `code/readme.txt`.
 
-To install uv refer to #TODO add link
-
-If you prefer to avoid using uv, you can install the required dependencies with `#TODO` and run the code with `#TODO`
-
+If you are looking for the assignment submission instructions for the code, use `code/readme.txt` rather than this top-level README.

@@ -12,9 +12,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-ROOT = Path(__file__).resolve().parents[2]
-SHAH_DIR = ROOT / "code" / "shah"
-RESULTS_DIR = ROOT / "code" / "angelo" / "results"
+ROOT = Path(__file__).resolve().parents[1]
+SHAH_DIR = ROOT / "code"
+RESULTS_DIR = ROOT / "code" / "results"
 TRAIN_PATH = ROOT / "data" / "train.txt"
 TEST_PATH = ROOT / "data" / "test.txt"
 TRANSFORM_PATH = ROOT / "data" / "transform.txt"
@@ -27,7 +27,7 @@ from benchmark_3ab import ALPHABET, compute_letter_word_accuracy, parse_ocr_file
 
 
 def load_q2b_module():
-    module_path = ROOT / "code" / "angelo" / "2b.py"
+    module_path = ROOT / "code" / "2b.py"
     spec = importlib.util.spec_from_file_location("angelo_q2b", module_path)
     if spec is None or spec.loader is None:
         raise ImportError(f"Unable to load CRF module from {module_path}")
@@ -251,9 +251,9 @@ def write_summary(
 
 def print_repo_summary(crf_c: float, svm_c_letter: float, svm_c_word: float) -> None:
     print("Repository summary for Q5", flush=True)
-    print("- CRF code reused from code/angelo/2b.py for training and decoding.", flush=True)
-    print("- Benchmark helpers reused from code/shah/benchmark_3ab.py for OCR parsing and accuracy computation.", flush=True)
-    print("- SVM-MC benchmark path in code/shah/benchmark_3ab.py uses LibLinear on LibSVM-style letter-level features.", flush=True)
+    print("- CRF code reused from code/2b.py for training and decoding.", flush=True)
+    print("- Benchmark helpers reused from code/benchmark_3ab.py for OCR parsing and accuracy computation.", flush=True)
+    print("- SVM-MC benchmark path in code/benchmark_3ab.py uses LibLinear on LibSVM-style letter-level features.", flush=True)
     print(f"- Chosen C values: CRF={crf_c}, SVM-MC(Q5a)={svm_c_letter}, SVM-MC(Q5b)={svm_c_word}.", flush=True)
     print("- Plan: distort training data only, retrain both models for each requested x, evaluate on clean test data, then save plots and a markdown summary.", flush=True)
 
