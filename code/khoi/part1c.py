@@ -68,30 +68,32 @@ def bruteforce(X, W, T):
             
     return np.array(best_sequence) + 1, best_score
 
-with open('data/decode_input.txt', 'r') as f:
-    lines = f.readlines()
-    lines = [line.strip() for line in lines]
-    X = []
-    start = 0
-    for i in range(0, 100):
-        X.append([np.float64(x) for x in lines[128*i:128*i+128]])
-        start += 128
-    W = []
-    newstart = start
-    for i in range(0, 26):
-        W.append([np.float64(x) for x in lines[start+128*i:start+128*i+128]])
-        newstart += 128
-    print(W[15][20])
-    start = newstart
-    T = np.zeros((26, 26), dtype=np.float64)
-    for i in range(0, 26):
-        for j in range(0, 26):
-            T[i][j] = np.float64(lines[start + 26*i + j])
-    print(len(T), len(T[0]))
-    result, max_objective_value = viterbi_decoder(np.array(X, dtype=np.float64), np.array(W, dtype=np.float64), np.array(T, dtype=np.float64))
-    print(result)
-    print(max_objective_value)
-    
-    result_bf, max_objective_value_bf = bruteforce(np.array(X[:3], dtype=np.float64), np.array(W, dtype=np.float64), np.array(T, dtype=np.float64))
-    print(result_bf)
-    print(max_objective_value_bf)
+if __name__ == "__main__":
+    with open('data/decode_input.txt', 'r') as f:
+        lines = f.readlines()
+        lines = [line.strip() for line in lines]
+        X = []
+        start = 0
+        for i in range(0, 100):
+            X.append([np.float64(x) for x in lines[128*i:128*i+128]])
+            start += 128
+        W = []
+        newstart = start
+        for i in range(0, 26):
+            W.append([np.float64(x) for x in lines[start+128*i:start+128*i+128]])
+            newstart += 128
+        print(W[15][20])
+        start = newstart
+        T = np.zeros((26, 26), dtype=np.float64)
+        for i in range(0, 26):
+            for j in range(0, 26):
+                T[i][j] = np.float64(lines[start + 26*i + j])
+        print(len(T), len(T[0]))
+        result, max_objective_value = viterbi_decoder(np.array(X, dtype=np.float64), np.array(W, dtype=np.float64), np.array(T, dtype=np.float64))
+        print(result)
+        print(max_objective_value)
+        
+        result_bf, max_objective_value_bf = bruteforce(np.array(X[:3], dtype=np.float64), np.array(W, dtype=np.float64), np.array(T, dtype=np.float64))
+        print(result_bf)
+        print(max_objective_value_bf)
+    f.close()

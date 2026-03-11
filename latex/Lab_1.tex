@@ -9,6 +9,11 @@
 \usepackage{array}
 \usepackage{multirow}
 \usepackage{subfigure}
+\usepackage{float}
+% \usepackage{algorithm}
+% \usepackage[noend]{algpseudocode}
+% \usepackage{amsmath}
+% \usepackage{subcaption}
 %\PassOptionsToPackage{normalem}{ulem}
 %\usepackage{ulem}
 
@@ -706,6 +711,8 @@ Here $C > 0$ is a trade-off weight that balances log-likelihood and regularizati
 	In your report, provide the optimal objective value of \eqref{eq:obj_MLE} found by your solver.
 \end{itemize}
 
+\paragraph{(2a):} The value of $\frac{1}{n} \sum_{t=1}^n \log p(\yvec^t | X^t)$ we got is $-31.288437439649147$.
+\paragraph{(2b):} The optimal objective value of \eqref{eq:obj_MLE} we got is $3701.1581395300996$.
 
 \section{Benchmarking with Other Learning Models}
 
@@ -935,8 +942,205 @@ For this section, you should fix the value of $C$ in the CRF to the best value f
 	What observation can be made?
 \end{itemize}
 
+\paragraph{(4a):}
+\noindent \textbf{Note:} Before figure~\ref{fig:final4a}, all the graphs contain accuracy instead of error. For analysis and reasoning on the hyperparameters, this is fine. In our final graph (figure~\ref{fig:final4a}), we will use error as the problem requires.\\
+From our experiment, the learning rate is the most important factor for the stochastic gradient descent approaches. We noticed that for the learning rate of $0.1$ and $0.01$ the SGD's objective is very unstable as it tends to diverge away from the initial objective value. The value of $0.001$ is better, but the objective values is still noisy and does not converge near optimal values found by LBFGS. The learning rate between $0.0005$ and $0.0001$ is ideal as the objective values converge quickly to almost optimal.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{../code/khoi/generated_graphs/mcmc_performance_B10_lr0_001_mom0_2.png}
+    \caption{$B=10$, learning rate $=0.001$, momentum $=0.2$}
+    \label{fig:4alr1}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{../code/khoi/generated_graphs/mcmc_performance_B10_lr0_0003_mom0_2.png}
+    \caption{$B=10$, learning rate $=0.0003$, momentum $=0.2$}
+    \label{fig:4alr2}
+\end{figure}
+\noindent Notice in the above graphs, the learning rate of $0.001$ still produce a lot of noises to the objective function, while the curve for learning rate of $0.0003$ is smoother.\\
+\noindent Another trend we find is that values of $B$ between $10$ and $20$ tend to return objective value to be close to that of LBFGS. Lower value of $B$ such that $B=5$ makes the SGD's objective to oscillate as demonstrated in the following graphs:
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{../code/khoi/generated_graphs/mcmc_performance_B5_lr0_001_mom0_2.png}
+    \caption{$B=5$, learning rate $=0.001$, momentum $=0.2$}
+    \label{fig:4aB1}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{../code/khoi/generated_graphs/mcmc_performance_B20_lr0_001_mom0_2.png}
+    \caption{$B=20$, learning rate $=0.001$, momentum $=0.2$}
+    \label{fig:4aB2}
+\end{figure}
+\noindent Regarding momentum, large value such as 0.9 to sometimes even 0.5 cause noises and inability to converge close to optimal. Details can be found below for momentum value of 0.9, 0.5, and 0.2:
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{../code/khoi/generated_graphs/mcmc_performance_B2_lr0_0003_mom0_9.png}
+    \caption{$B=2$, learning rate $=0.0003$, momentum $=0.9$}
+    \label{fig:4am1}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{../code/khoi/generated_graphs/mcmc_performance_B2_lr0_0003_mom0_5.png}
+    \caption{$B=2$, learning rate $=0.0003$, momentum $=0.5$}
+    \label{fig:4am2}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{../code/khoi/generated_graphs/mcmc_performance_B2_lr0_0003_mom0_2.png}
+    \caption{$B=2$, learning rate $=0.0003$, momentum $=0.2$}
+    \label{fig:4am3}
+\end{figure}
+\noindent Thus, for our experiment, we decide to choose $B=10$, learning rate to be $0.0003$, and momentum to be $0.2$ to obtain the following graph:
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{../code/khoi/generated_graphs/4a_mcmc_performance_B10_lr0_0003_mom0_2.png}
+    \caption{Final selection: $B=10$, learning rate $=0.0003$, momentum $=0.2$}
+    \label{fig:final4a}
+\end{figure}
+\noindent We can see that the SGD and SGD with momentum learning objective and word-wise error drops within the first few passes. However, both methods struggle to break the barrier to obtain lower objective and error than the LBFGS method that steadily converges. Another note is that there is a sudden drop at the beginning for both SGD methods. This is because a pass of SGD contains multiple rounds of sampling, leading do the sudden drop.
 
+\paragraph{(4b):} 
+\subsubsection*{(i):} Notice that the $y_s$ only depends on its neighbor, namely $y_{s-1}$ and $y_{s+1}$. Thus, the probability we are looking for only depend on the node potential and its two edge potentials. In other words,
+\begin{align*}
+    p(y_s|\ldots, y_{s-3}, y_{s-1}, y_{s+1}, y_{s+3}, \ldots, X) &= p(y_s|y_{s-1}, y_{s+1}, X) \\
+    &= \frac{e^{(\langle w_{y_s}, x_s \rangle + T_{y_{s-1}, y_s} + T_{y_s, y_{s+1}})}}{\sum_{c \in \mathcal{Y}} e^{(\langle w_c, x_s \rangle + T_{y_{s-1}, c} + T_{c, y_{s+1}})}}
+\end{align*}
+To calculate such distribution, notice that the numerator is part of the denominator. The denominator can then be evaluate by brute force by iterating over every letter of a word and every letter in the alphabet. Thus, the runtime to evaluate this distribution is $O(m|\mathcal{Y}|)$.
+\subsubsection*{(ii):}
+The first thing to mention is that LBFGS of scipy works well only with non-stochastic evaluation. Multi-batches LBFGS is possible as of research in 2016, but we will not use it here. Therefore, it is expected that sampling will not work well here. Indeed, for low value of $S$ such as $S = 5$ or $S = 10$, the objective function either fails linear search or converge at a very bad solution:
+\begin{figure}[H]
+    \centering
+    \begin{minipage}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/LBFGS_S_5.png}
+        % \caption{Caption for Image 1}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/LBFGS_S_10.png}
+        % \caption{Caption for Image 2}
+    \end{minipage}
+\end{figure}
+\noindent For the LBFGS with larger value of $S$, in our case $50$, the solution converge slowly, but takes a very long time. In the following screenshot:
+\begin{figure}[H]
+    \centering
+    \begin{minipage}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/LBFGS_S_50.png}
+        % \caption{Caption for Image 1}
+    \end{minipage}
+\end{figure}
+\noindent We observe that there is a steady decrease of both the objective function and word-wise error. However, it takes roughly an hour to get to iteration 10 and 90 evaluations. Thus, we conclude the execution.\\
+Regarding the performance for the MCMC and RB MCMC, we produced the following graph for $S=2$, $S=5$, $S=10$, and $S=50$ using the same parameter from part 4a. The result are shown as follows:
+\begin{figure}[H]
+    \centering
+    \begin{minipage}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_2_Objective.png}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_2_Error.png}
+    \end{minipage}
+    \caption{$S=2$}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \begin{minipage}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_5_Objective.png}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_5_Error.png}
+    \end{minipage}
+    \caption{$S=5$}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \begin{minipage}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_10_Objective.png}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_10_Error.png}
+    \end{minipage}
+    \caption{$S=10$}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \begin{minipage}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_50_Objective.png}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_50_Error.png}
+    \end{minipage}
+    \caption{$S=50$}
+\end{figure}
+\noindent We notice that compared to Figure~\ref{fig:4alr2}, adding stochastic selection for the gradient introduces some noises to the objective and especially the error. In addition, we can see that as $S$ increases, the noise reduces, leading to a smoother curve of the objective, though the error is still somewhat noisy. In addition, larger values of $S$ also lower the overall objective and error rate. This makes sense because as the number of sample increases, the gradient obtained by sampling gets closer to the true gradient obtained from the dynamic programming method. Thus, it will guide the SGD methods to better solutions.\\
+We can see the reduction in the noise and value of the objective by taking the log:
+\begin{figure}[H]
+    \centering
+    \begin{minipage}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_2_Objective_Log.png}
+        \caption{log objective for $S=2$}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_5_Objective_Log.png}
+        \caption{log objective for $S=5$}
+    \end{minipage}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \begin{minipage}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_10_Objective_Log.png}
+        \caption{log objective for $S=10$}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../code/khoi/generated_graphs/S_50_Objective_Log.png}
+        \caption{log objective for $S=50$}
+    \end{minipage}
+\end{figure}
 
+\paragraph{(4c):}
+\subsubsection*{(i):} The implementation of RB sampling can be expressed as follows:
+	
+	1. Sample $y_s$ for all $s$ based on the independent distribution given that $T = 0$.
+	
+	2. Set the count of $y_s = c$ for all $s, c$ to 0 and $y_s, y_{s+1} = p, q$ to 0 for all $s, p, q$.
+	
+	3. For $k = 1, 2, \ldots, S$
+	
+	4. $\qquad$ Even indexed sampling: For all even index $y_s$, compute the conditional distribution $y_s = c$ for all $c = \{1, \ldots, 26\}$. Then, increase the count for $y_s = c$ by $p_c$ and count of $T_{p_{s-1}, p_s=c}$ and $T_{p_s=c, p_{s+1}}$ by $p_c$.. Finally, draw sample on $y_s$ based on the distribution.
+	
+	5. $\qquad$ Odd indexed sampling: Do the same thing as even index.
+	
+	7. Normalize by dividing the node count by $|S|$ and the edge count by $2|S|$
+	
+\noindent Note that the reason we divide the node count by $|S|$ is that each node is increases by some $p_c$ once, while for edge count it is double counted. In addition, we can draw sample at the end of each loop, but we can also do it separately in line 4 and 5 because the distribution are independent. We think that the count should be update right before the sampling because it will capture the relationship of the current node and the state it is in, while updating the count outside the loop is basically taking the average from the sample, which still allows room for high variance. Note that updating before or after the sampling make a slight difference where we sample from the first or last sampling, but it should not make a big difference.
+\subsubsection*{(ii):}
+Using $S$ to be $\{5, 10, 50, 100, 500, 1000\}$, we obtained the following graph:
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\linewidth]{../code/khoi/generated_graphs/kl_divergence_comparison.png}
+    \caption{KL divergence comparison of MCMC method and RB MCMC method for nodes and edges.}
+    \label{fig:4cii}
+\end{figure}
+\noindent All four lines show that our sampling method work because the KL divergence against the DP result decreases towards 0 as $S$ increases. In addition, notice that with RB, the KL divergence is always smaller than the MCMC method in part 4b for all value of $S$ we used, indicating that RB sampling is more effective.
 
 \section{Robustness to Distortion}
 
