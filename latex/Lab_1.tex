@@ -1102,7 +1102,7 @@ The first thing to mention is that LBFGS of scipy works well only with non-stoch
         % \caption{Caption for Image 1}
     \end{minipage}
 \end{figure}
-\noindent We observe that there is a steady decrease of both the objective function and word-wise error. However, it takes roughly an hour to get to iteration 10 and 90 evaluations. Thus, we conclude the execution.\\
+\noindent We observe that there is a steady decrease of both the objective function and word-wise error. However, it takes roughly an hour to get to iteration 10 and 90 evaluations. In addition, this is only achieved when we tweak the value of eta to be $0.1$ and stepmx to be $1$ of function fmin\_tnc. Thus, we conclude the execution.\\
 Regarding the performance for the MCMC and RB MCMC, we produced the following graph for $S=2$, $S=5$, $S=10$, and $S=50$ using the same parameter from part 4a. The result are shown as follows:
 \begin{figure}[H]
     \centering
