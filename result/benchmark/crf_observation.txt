@@ -1,0 +1,5 @@
+Model: CRF
+Best letter-accuracy C: 1000.0 (acc=0.8375)
+Best word-accuracy C: 1000.0 (acc=0.4725)
+Typical pattern: very small C underfits, while very large C may overfit.
+Word accuracy is usually lower and more sensitive than letter accuracy because one wrong letter makes the entire word wrong.
