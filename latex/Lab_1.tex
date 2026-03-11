@@ -1011,8 +1011,10 @@ For this section, you should fix the value of $C$ in the CRF to the best value f
 	What observation can be made?
 \end{itemize}
 
+For the following results in this problem, we select $C = 1000$ based on the previous problem.
+
 \paragraph{(4a):}
-\noindent \textbf{Note:} Before figure~\ref{fig:final4a}, all the graphs contain accuracy instead of error. For analysis and reasoning on the hyperparameters, this is fine. In our final graph (figure~\ref{fig:final4a}), we will use error as the problem requires.\\
+\noindent \textbf{Note:} In figure~\ref{fig:4alr1} to figure~\ref{fig:4am3}, all the graphs contain accuracy instead of error. For analysis and reasoning on the hyperparameters, this is fine. In our final graph (figure~\ref{fig:final4a}), we will use error as the problem requires.\\
 From our experiment, the learning rate is the most important factor for the stochastic gradient descent approaches. We noticed that for the learning rate of $0.1$ and $0.01$ the SGD's objective is very unstable as it tends to diverge away from the initial objective value. The value of $0.001$ is better, but the objective values is still noisy and does not converge near optimal values found by LBFGS. The learning rate between $0.0005$ and $0.0001$ is ideal as the objective values converge quickly to almost optimal.
 \begin{figure}[H]
     \centering
@@ -1155,7 +1157,7 @@ Regarding the performance for the MCMC and RB MCMC, we produced the following gr
     \caption{$S=50$}
 \end{figure}
 \noindent We notice that compared to Figure~\ref{fig:4alr2}, adding stochastic selection for the gradient introduces some noises to the objective and especially the error. In addition, we can see that as $S$ increases, the noise reduces, leading to a smoother curve of the objective, though the error is still somewhat noisy. In addition, larger values of $S$ also lower the overall objective and error rate. This makes sense because as the number of sample increases, the gradient obtained by sampling gets closer to the true gradient obtained from the dynamic programming method. Thus, it will guide the SGD methods to better solutions.\\
-We can see the reduction in the noise and value of the objective by taking the log:
+We can see the reduction in the noise and value of the objective by taking the log of the objective:
 \begin{figure}[H]
     \centering
     \begin{minipage}[b]{0.45\textwidth}
@@ -1200,7 +1202,7 @@ We can see the reduction in the noise and value of the objective by taking the l
 	
 	7. Normalize by dividing the node count by $|S|$ and the edge count by $2|S|$
 	
-\noindent Note that the reason we divide the node count by $|S|$ is that each node is increases by some $p_c$ once, while for edge count it is double counted. In addition, we can draw sample at the end of each loop, but we can also do it separately in line 4 and 5 because the distribution are independent. We think that the count should be update right before the sampling because it will capture the relationship of the current node and the state it is in, while updating the count outside the loop is basically taking the average from the sample, which still allows room for high variance. Note that updating before or after the sampling make a slight difference where we sample from the first or last sampling, but it should not make a big difference.
+\noindent Note that the reason we divide the node count by $|S|$ is that each node is increases by some $p_c$ once, while for edge count it is $2|S|$ since it is double counted. In addition, we can draw sample at the end of each loop, but we can also do it separately in line 4 and 5 because the distribution are independent. We think that the count should be update right before the sampling because it will capture the relationship of the current node and the state it is in, while updating the count outside the loop is basically taking the average from the sample, which still allows room for high variance.
 \subsubsection*{(ii):}
 Using $S$ to be $\{5, 10, 50, 100, 500, 1000\}$, we obtained the following graph:
 \begin{figure}[H]
