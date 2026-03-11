@@ -16,8 +16,8 @@ mkdir -p "$BUILD_DIR"
 
 (
   cd "$LATEX_DIR"
-  /Library/TeX/texbin/latexmk -C -outdir="$BUILD_DIR" Lab_1.tex
-  /Library/TeX/texbin/latexmk -pdf -interaction=nonstopmode -outdir="$BUILD_DIR" Lab_1.tex
+  latexmk -C -outdir="$BUILD_DIR" Lab_1.tex
+  latexmk -pdf -interaction=nonstopmode -outdir="$BUILD_DIR" Lab_1.tex
 )
 
 echo "Built PDF: $BUILD_DIR/Lab_1.pdf"
