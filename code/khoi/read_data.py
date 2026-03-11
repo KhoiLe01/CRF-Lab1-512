@@ -1,3 +1,4 @@
+# Helper functions to read model and data files
 import numpy as np
 
 def read_model(model_path):
