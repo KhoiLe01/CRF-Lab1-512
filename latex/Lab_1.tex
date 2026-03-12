@@ -1317,11 +1317,11 @@ Then
 
 To compute $f_i(y_i)$, we use recursion by
 \begin{align}
-		\label{eq:rec_Z_backward_1}
+		\label{eq:rec_Z_forward_1}
 	f_1(y_1) &= 1, \quad \forall y_1 \in \Ycal \\
 	f_i(y_i) &= \sum_{y_{i-1}} \exp \rbr{\inner{\wvec_{y_{i-1}}}{\xvec_{i-1}} + T_{y_{i-1}, y_i}}
 	\sum_{y_1, \ldots, y_{i-2}} \exp \rbr{\sum_{j=1}^{i-2} \inner{\wvec_{y_j}}{\xvec_j} + \sum_{j=1}^{i-2} T_{y_j, y_{j+1}}} \\
-		\label{eq:rec_Z_backward_2}
+		\label{eq:rec_Z_forward_2}
 	&= \sum_{y_{i-1}} \exp \rbr{\inner{\wvec_{y_{i-1}}}{\xvec_{i-1}} + T_{y_{i-1}, y_i}}  \cdot f_{i-1}(y_{i-1})  \qquad (\forall\ y_i \in \Ycal, \ i = 2, 3, \ldots, m).	 
 \end{align}
 
@@ -1413,11 +1413,11 @@ Then the partition function can be computed by
 
 To compute $b_i(y_i)$, we use recursion by
 \begin{align}
-	\label{eq:rec_Z_forward_1}
+		\label{eq:rec_Z_backward_1}
 	b_m(y_m) &= 1, \quad \forall y_i \in \Ycal \\
 	b_i(y_i) &= \sum_{y_{i+1}} \exp \rbr{\inner{\wvec_{y_{i+1}}}{\xvec_{i+1}} + T_{y_{i}, y_{i+1}}}
 	\sum_{y_{i+2}, \ldots, y_m} \exp \rbr{\sum_{j=i+2}^{m} \inner{\wvec_{y_j}}{\xvec_j} + \sum_{j=i+1}^{m-1} T_{y_j, y_{j+1}}} \\
-	\label{eq:rec_Z_forward_2}
+		\label{eq:rec_Z_backward_2}
 	&= \sum_{y_{i+1}}\exp \rbr{\inner{\wvec_{y_{i+1}}}{\xvec_{i+1}} + T_{y_{i}, y_{i+1}}} b_{i+1}(y_{i+1})  \qquad (\forall\ y_i \in \Ycal, \ i = m-1, m-2, \ldots, 1).	 
 \end{align}
 
