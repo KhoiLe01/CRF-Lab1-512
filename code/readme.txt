@@ -52,10 +52,11 @@ Question 2(b):
 - python code/2b.py
 
 Question 3(a) and 3(b):
-- python code/benchmark_3ab.py
+- python code/benchmark_3ab.py --models CRF,SVM_MC,SVM_Struct_SVMHMM --c-values 1,10,100,1000 --svm-hmm-dir "svm_hmm" --out-dir result\benchmark
 
 Question 4(a) and 4(b):
 - python code/part4.py
+* Update the argument of main function to '4a' or '4b' to run the part accordingly
 
 Question 4(c):
 - python code/part4_debug_and_4c.py
